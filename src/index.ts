@@ -12,9 +12,61 @@ export function apply(ctx: Context) {
   let tempData: Record<string, {
     nowData?: Stock;
     status: { down: number, up: number, baseMoney: number, unitPrice: number, lastBaseMoney: number, has: number, new: number; };
+    isOpen: boolean;
   }> = {};
 
   // const logger = new Logger('IIROSE-Stock-Monitor');
+
+  ctx.command('stockMonitor', '花园股票监听器');
+
+  ctx.command('stockMonitor').subcommand('.on', '开启股票监听功能').action(v => {
+    if (v.session.platform != "iirose") { return; }
+    if (!tempData.hasOwnProperty(v.session.selfId))
+    {
+      tempData[v.session.selfId] = {
+        status: {
+          down: 0,
+          up: 0,
+          baseMoney: 0,
+          unitPrice: 0,
+          lastBaseMoney: 1,
+          has: 0,
+          new: 0
+        },
+        isOpen: true
+      };
+    }
+
+    const thisBotObj = tempData[v.session.selfId];
+    thisBotObj.isOpen = true;
+
+    v.session.send(' [stockMonitor] 监听已开启');
+  });
+
+  ctx.command('stockMonitor').subcommand('.off', '关闭股票监听功能').action(v => {
+    if (v.session.platform != "iirose") { return; }
+    if (!tempData.hasOwnProperty(v.session.selfId))
+    {
+      tempData[v.session.selfId] = {
+        status: {
+          down: 0,
+          up: 0,
+          baseMoney: 0,
+          unitPrice: 0,
+          lastBaseMoney: 1,
+          has: 0,
+          new: 0
+        },
+        isOpen: true
+      };
+    }
+
+    const thisBotObj = tempData[v.session.selfId];
+    thisBotObj.isOpen = false;
+
+    v.session.send(' [stockMonitor] 监听已关闭');
+  });
+
 
   ctx.on('iirose/before-getUserList', (session) => {
     if (!tempData.hasOwnProperty(session.selfId))
@@ -28,11 +80,15 @@ export function apply(ctx: Context) {
           lastBaseMoney: 1,
           has: 0,
           new: 0
-        }
+        },
+        isOpen: true
       };
     }
 
-    const thisBotObj = tempData[session.selfId]
+    const thisBotObj = tempData[session.selfId];
+
+    if (!thisBotObj.isOpen) { return; }
+
     const status = thisBotObj.status;
 
     // const nowData = thisBotObj.nowData
