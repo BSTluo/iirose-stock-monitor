@@ -57,7 +57,7 @@ export function apply(ctx: Context) {
           has: 0,
           new: 0
         },
-        isOpen: true
+        isOpen: false
       };
     }
 
