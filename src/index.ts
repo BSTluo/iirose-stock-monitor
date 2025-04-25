@@ -11,7 +11,7 @@ export const Config: Schema<Config> = Schema.object({});
 
 export const usage = ` # 须知
 v0.0.7版本后，支持图表显示功能，但需要安装echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
-`
+`;
 
 export const inject = ['echarts'];
 
@@ -95,6 +95,9 @@ export function apply(ctx: Context)
           show: true,
           position: 'top'
         },
+        markLine: {
+          data: [{ type: 'average', name: 'Avg' }]
+        }
       }
     ]
   };
@@ -227,7 +230,7 @@ export function apply(ctx: Context)
         message[4] = `总股：${data.totalStock}`;
         message[5] = `总金：${data.totalMoney}`;
 
-        echartsOption.series[0].data =[data.unitPrice];
+        echartsOption.series[0].data = [data.unitPrice];
         const now = new Date();
         echartsOption.xAxis.data = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
 
