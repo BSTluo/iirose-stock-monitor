@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-iirose-stock-monitor",
   "description": "适用于的[IIROSE蔷薇花园](https://iirose.com/)的股价监控",
-  "version": "0.0.9",
+  "version": "0.0.11",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -16,10 +16,17 @@
   ],
   "peerDependencies": {
     "koishi": "^4.18.7",
-    "koishi-plugin-adapter-iirose": "^0.3.64",
-    "koishi-plugin-echarts": "^0.5.0"
+    "koishi-plugin-adapter-iirose": "^0.3.64"
   },
   "devDependencies": {
-    "koishi-plugin-adapter-iirose": "^0.3.64"
+    "koishi-plugin-adapter-iirose": "^0.3.64",
+    "koishi-plugin-w-echarts": "^3.0.1"
+  },
+  "koishi": {
+    "service": {
+      "required": [
+        "echarts"
+      ]
+    }
   }
 }

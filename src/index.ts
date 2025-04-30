@@ -1,7 +1,7 @@
 import { Context, h, Logger, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
-import { } from "koishi-plugin-echarts";
+import { } from "koishi-plugin-w-echarts";
 
 export const name = 'iirose-stock-monitor';
 
@@ -10,7 +10,7 @@ export interface Config { }
 export const Config: Schema<Config> = Schema.object({});
 
 export const usage = ` # 须知
-v0.0.7版本后，支持图表显示功能，但需要安装echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
+v0.0.7版本后，支持图表显示功能，但需要安装w-echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
 `;
 
 export const inject = ['echarts'];
@@ -160,12 +160,15 @@ export function apply(ctx: Context)
   {
     if (v.session.platform != "iirose") { return; }
 
-    const chart = await ctx.echarts.createChart(1000, 700, echartsOption as any);
+    if (echartsOption.series[0].data.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
 
-    const buffer = chart.canvas.toBuffer("image/png");
+    const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+
+    const chart = ctx.echarts.createChart(width, 700, echartsOption as any);
+
+    const buffer = await chart.export();
     chart.dispose(); // 除非你还想用否则务必销毁实例
-    return [h.text(' [stockMonitor] 本轮股票票价'), h.image(buffer, "image/png")];
-
+    return [h.text(' [stockMonitor] 本轮股票票价\n'), buffer];
   });
 
 
