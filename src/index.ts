@@ -21,6 +21,10 @@ export function apply(ctx: Context)
     nowData?: Stock;
     status: { down: number, up: number, baseMoney: number, unitPrice: number, lastBaseMoney: number, has: number, new: number; };
     isOpen: boolean;
+    history: {
+      price: number[];
+      time: string[];
+    };
   }> = {};
 
   let echartsOption = {
@@ -106,7 +110,9 @@ export function apply(ctx: Context)
 
   ctx.command('iirose', '花园工具');
 
-  ctx.command('iirose.stock.on', '开启股票监听功能').action(v =>
+  ctx.command('iirose.stock.on', '开启股票监听功能')
+  .alias('股票播报开启')
+  .action(v =>
   {
     if (v.session.platform != "iirose") { return; }
     if (!tempData.hasOwnProperty(v.session.selfId))
@@ -121,7 +127,11 @@ export function apply(ctx: Context)
           has: 0,
           new: 0
         },
-        isOpen: true
+        isOpen: true,
+        history: {
+          price: [],
+          time: []
+        }
       };
     }
 
@@ -131,7 +141,9 @@ export function apply(ctx: Context)
     v.session.send(' [stockMonitor] 监听已开启');
   });
 
-  ctx.command('iirose.stock.off', '关闭股票监听功能').action(v =>
+  ctx.command('iirose.stock.off', '关闭股票监听功能')
+  .alias('股票播报关闭')
+  .action(v =>
   {
     if (v.session.platform != "iirose") { return; }
     if (!tempData.hasOwnProperty(v.session.selfId))
@@ -146,7 +158,11 @@ export function apply(ctx: Context)
           has: 0,
           new: 0
         },
-        isOpen: false
+        isOpen: false,
+        history: {
+          price: [],
+          time: []
+        }
       };
     }
 
@@ -156,20 +172,41 @@ export function apply(ctx: Context)
     v.session.send(' [stockMonitor] 监听已关闭');
   });
 
-  ctx.command('iirose.stock.chart', '查看本轮股票的图表').action(async v =>
+
+  const getMiddleRange = (array: number[] | string[], minPercent: number, maxPercent: number) =>
   {
-    if (v.session.platform != "iirose") { return; }
+    const length = array.length;
+    const start = Math.floor((minPercent / 100) * length);
+    const end = Math.floor((maxPercent / 100) * length);
+    return array.slice(start, end);
+  };
 
-    if (echartsOption.series[0].data.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+  ctx.command('iirose.stock.chart', '查看本轮股票的图表')
+    .alias('股票图表')
+    .option('max', '-m [max:number] 最大显示百上限', { fallback: 100 })
+    .option('min', '-n [min:number] 显示百分比下限', { fallback: 0 })
+    .usage('注意：-m和-n的参数是0~100的值，-m和-n可以不写')
+    .example('iirose.stock.chart -m 100 -n 0')
+    .action(async v =>
+    {
 
-    const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+      if (v.session.platform != "iirose") { return; }
 
-    const chart = ctx.echarts.createChart(width, 700, echartsOption as any);
+      const thisBotObj = tempData[v.session.selfId];
 
-    const buffer = await chart.export();
-    chart.dispose(); // 除非你还想用否则务必销毁实例
-    return [h.text(' [stockMonitor] 本轮股票票价\n'), buffer];
-  });
+      if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+
+      echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
+      echartsOption.xAxis.data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
+
+      const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+
+      const chart = ctx.echarts.createChart(width, 700, echartsOption as any);
+
+      const buffer = await chart.export();
+      chart.dispose(); // 除非你还想用否则务必销毁实例
+      return [h.text(' [stockMonitor] 本轮股票票价\n'), buffer];
+    });
 
 
   ctx.on('iirose/before-getUserList', (session) =>
@@ -186,7 +223,11 @@ export function apply(ctx: Context)
           has: 0,
           new: 0
         },
-        isOpen: true
+        isOpen: true,
+        history: {
+          price: [],
+          time: []
+        }
       };
     }
 
@@ -233,9 +274,9 @@ export function apply(ctx: Context)
         message[4] = `总股：${data.totalStock}`;
         message[5] = `总金：${data.totalMoney}`;
 
-        echartsOption.series[0].data = [data.unitPrice];
+        thisBotObj.history.price = [data.unitPrice];
         const now = new Date();
-        echartsOption.xAxis.data = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
+        thisBotObj.history.time = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
 
         return data.send({
           public: {
@@ -245,9 +286,9 @@ export function apply(ctx: Context)
 
       }
 
-      echartsOption.series[0].data.push(data.unitPrice);
+      thisBotObj.history.price.push(data.unitPrice);
       const now = new Date();
-      echartsOption.xAxis.data.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+      thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
 
       if (data.unitPrice > thisBotObj.nowData.unitPrice)
       {
