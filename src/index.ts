@@ -1,7 +1,7 @@
 import { Context, h, Logger, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
-import { } from "koishi-plugin-w-echarts";
+import { } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
 
@@ -194,18 +194,17 @@ export function apply(ctx: Context)
 
       const thisBotObj = tempData[v.session.selfId];
 
-      if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
-
-      echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
-      echartsOption.xAxis.data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
+      // if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+      echartsOption.series[0].data = [0]
+      echartsOption.xAxis.data = [0];
+      // echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
+      // echartsOption.xAxis.data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
 
       const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
 
-      const chart = ctx.echarts.createChart(width, 700, echartsOption as any);
+      const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
 
-      const buffer = await chart.export();
-      chart.dispose(); // 除非你还想用否则务必销毁实例
-      return [h.text(' [stockMonitor] 本轮股票票价\n'), buffer];
+      return ' [stockMonitor] 本轮股票票价\n\n' + chart;
     });
 
 
