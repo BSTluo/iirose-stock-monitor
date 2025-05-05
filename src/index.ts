@@ -1,7 +1,7 @@
 import { Context, h, Logger, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
-import { } from "koishi-plugin-puppeteer-echarts";
+import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
 
@@ -27,7 +27,7 @@ export function apply(ctx: Context)
     };
   }> = {};
 
-  let echartsOption = {
+  let echartsOption: EchartsOption = {
     backgroundColor: 'rgba(254,248,239,1)', // 来自主题
     color: [
       "#d87c7c", "#919e8b", "#d7ab82", "#6e7074",
@@ -111,66 +111,66 @@ export function apply(ctx: Context)
   ctx.command('iirose', '花园工具');
 
   ctx.command('iirose.stock.on', '开启股票监听功能')
-  .alias('股票播报开启')
-  .action(v =>
-  {
-    if (v.session.platform != "iirose") { return; }
-    if (!tempData.hasOwnProperty(v.session.selfId))
+    .alias('股票播报开启')
+    .action(v =>
     {
-      tempData[v.session.selfId] = {
-        status: {
-          down: 0,
-          up: 0,
-          baseMoney: 0,
-          unitPrice: 0,
-          lastBaseMoney: 1,
-          has: 0,
-          new: 0
-        },
-        isOpen: true,
-        history: {
-          price: [],
-          time: []
-        }
-      };
-    }
+      if (v.session.platform != "iirose") { return; }
+      if (!tempData.hasOwnProperty(v.session.selfId))
+      {
+        tempData[v.session.selfId] = {
+          status: {
+            down: 0,
+            up: 0,
+            baseMoney: 0,
+            unitPrice: 0,
+            lastBaseMoney: 1,
+            has: 0,
+            new: 0
+          },
+          isOpen: true,
+          history: {
+            price: [],
+            time: []
+          }
+        };
+      }
 
-    const thisBotObj = tempData[v.session.selfId];
-    thisBotObj.isOpen = true;
+      const thisBotObj = tempData[v.session.selfId];
+      thisBotObj.isOpen = true;
 
-    v.session.send(' [stockMonitor] 监听已开启');
-  });
+      v.session.send(' [stockMonitor] 监听已开启');
+    });
 
   ctx.command('iirose.stock.off', '关闭股票监听功能')
-  .alias('股票播报关闭')
-  .action(v =>
-  {
-    if (v.session.platform != "iirose") { return; }
-    if (!tempData.hasOwnProperty(v.session.selfId))
+    .alias('股票播报关闭')
+    .action(v =>
     {
-      tempData[v.session.selfId] = {
-        status: {
-          down: 0,
-          up: 0,
-          baseMoney: 0,
-          unitPrice: 0,
-          lastBaseMoney: 1,
-          has: 0,
-          new: 0
-        },
-        isOpen: false,
-        history: {
-          price: [],
-          time: []
-        }
-      };
-    }
+      if (v.session.platform != "iirose") { return; }
+      if (!tempData.hasOwnProperty(v.session.selfId))
+      {
+        tempData[v.session.selfId] = {
+          status: {
+            down: 0,
+            up: 0,
+            baseMoney: 0,
+            unitPrice: 0,
+            lastBaseMoney: 1,
+            has: 0,
+            new: 0
+          },
+          isOpen: false,
+          history: {
+            price: [],
+            time: []
+          }
+        };
+      }
 
-    const thisBotObj = tempData[v.session.selfId];
-    thisBotObj.isOpen = false;
+      const thisBotObj = tempData[v.session.selfId];
+      thisBotObj.isOpen = false;
 
-    v.session.send(' [stockMonitor] 监听已关闭');
-  });
+      v.session.send(' [stockMonitor] 监听已关闭');
+    });
 
 
   const getMiddleRange = (array: number[] | string[], minPercent: number, maxPercent: number) =>
@@ -194,11 +194,10 @@ export function apply(ctx: Context)
 
       const thisBotObj = tempData[v.session.selfId];
 
-      // if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
-      echartsOption.series[0].data = [0]
-      echartsOption.xAxis.data = [0];
-      // echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
-      // echartsOption.xAxis.data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
+      if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+
+      echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
+      (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
 
       const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
 
