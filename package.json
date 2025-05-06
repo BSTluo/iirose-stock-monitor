@@ -17,11 +17,11 @@
   "peerDependencies": {
     "koishi": "^4.18.7",
     "koishi-plugin-adapter-iirose": "^0.3.64",
-    "koishi-plugin-puppeteer-echarts": "^0.0.2"
+    "koishi-plugin-puppeteer-echarts": "^0.0.4"
   },
   "devDependencies": {
     "koishi-plugin-adapter-iirose": "^0.3.64",
-    "koishi-plugin-puppeteer-echarts": "^0.0.2"
+    "koishi-plugin-puppeteer-echarts": "^0.0.4"
   },
   "koishi": {
     "service": {
