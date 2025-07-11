@@ -5,13 +5,50 @@ import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
 
-export interface Config { }
+export interface BaseConfig {
+  enableSuggestion: boolean
+}
 
-export const Config: Schema<Config> = Schema.object({});
+export interface EnabledConfig extends BaseConfig {
+  enableSuggestion: true
+  buyMoney?: [Number, Number, Boolean]
+  sellMoney?: [Number, Number, Boolean]
+  buyCombo?: [Number, Boolean]
+  sellCombo?: [Number, Boolean]
+}
+
+export type Config = BaseConfig | EnabledConfig
+
+export const Config: Schema<Config> = Schema.intersect([
+  Schema.object({
+    enableSuggestion: Schema.boolean().default(false).description('是否开启建议'),
+  }),
+  Schema.union([
+    Schema.object({
+      enableSuggestion: Schema.const(true).required(),
+      buyMoney: Schema.tuple([Number, Number, Boolean])
+        .description('在价格在指定值之间的时候提示买进')
+        .default([0.1, 0.2, false]),
+      sellMoney: Schema.tuple([Number, Number, Boolean])
+        .description('在价格在指定值之间的时候提示卖出')
+        .default([1, 999, false,]),
+      buyCombo: Schema.tuple([Number, Boolean])
+        .description('在连续下跌指定值次的时候提示买进')
+        .default([3, false]),
+      sellCombo: Schema.tuple([Number, Boolean])
+        .description('在连续上涨指定值次的时候提示卖出')
+        .default([3, false]),
+    }),
+    Schema.object({
+      enableSuggestion: Schema.const(false).required(),
+    }),
+  ]),
+])
 
 export const usage = ` # 须知
 v0.0.7版本后，支持图表显示功能，但需要安装w-echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
 `;
+
 
 export const inject = ['echarts'];
 
@@ -21,6 +58,7 @@ export function apply(ctx: Context)
     nowData?: Stock;
     status: { down: number, up: number, baseMoney: number, unitPrice: number, lastBaseMoney: number, has: number, new: number; };
     isOpen: boolean;
+    lastBuyPrice?: number;
     history: {
       price: number[];
       time: string[];
