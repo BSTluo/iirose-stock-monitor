@@ -1,0 +1,20 @@
+{
+  "stockMonitor.enable": "[stockMonitor] Monitoring enabled",
+  "stockMonitor.disable": "[stockMonitor] Monitoring disabled",
+  "stockMonitor.noData": "[stockMonitor] No stock data recorded by the plugin",
+  "stockMonitor.data": "[stockMonitor] Current round stock prices\n\n",
+  "stockMonitor.header": "# Stock Price Alert",
+  "stockMonitor.crash": "Stock market crashed!",
+  "stockMonitor.beforeCrash": "Total shares before crash: {0}",
+  "stockMonitor.upTime": "Increased {0} times",
+  "stockMonitor.upCash": "Increased by {0} cash; growth rate {1}%",
+  "stockMonitor.downTime": "Decreased {0} times",
+  "stockMonitor.downCash": "Decreased by {0} cash; decline rate {1}%",
+  "stockMonitor.unitPrice": "Stock price: {0}",
+  "stockMonitor.totalStock": "Total shares: {0}",
+  "stockMonitor.totalMoney": "Total money: {0}",
+  "stockMonitor.buyMoney": "Recommend buying: current price {0} cash, within configured range [{1}~{2}]",
+  "stockMonitor.sellMoney": "Recommend selling: current price {0} cash, within configured range [{1}~{2}]",
+  "stockMonitor.buyCombo": "Recommend buying: price has decreased {0} times consecutively",
+  "stockMonitor.sellCombo": "Recommend selling: price has increased {0} times consecutively"
+}

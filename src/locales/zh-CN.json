@@ -1,0 +1,20 @@
+{
+  "stockMonitor.enable": "[stockMonitor] 监听已开启",
+  "stockMonitor.disable": "[stockMonitor] 监听已关闭",
+  "stockMonitor.noData": "[stockMonitor] 插件未记录股票数据",
+  "stockMonitor.data": "[stockMonitor] 本轮股票票价\n\n",
+  "stockMonitor.header": "# 股价提醒",
+  "stockMonitor.crash": "股市崩盘了！",
+  "stockMonitor.beforeCrash": "崩盘前盘内共有：{0}股",
+  "stockMonitor.upTime": "已增加 {0} 次",
+  "stockMonitor.upCash": "已增加 {0} 钞; 增幅 {1}%",
+  "stockMonitor.downTime": "已降低 {0} 次",
+  "stockMonitor.downCash": "已降低 {0} 钞; 降幅 {1}%",
+  "stockMonitor.unitPrice": "股价：{0}",
+  "stockMonitor.totalStock": "总股：{0}",
+  "stockMonitor.totalMoney": "总金：{0}",
+  "stockMonitor.buyMoney": "建议买入：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
+  "stockMonitor.sellMoney": "建议卖出：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
+  "stockMonitor.buyCombo": "建议买入：股价已连续下跌 {0} 次",
+  "stockMonitor.sellCombo": "建议卖出：股价已连续上涨 {0} 次"
+}

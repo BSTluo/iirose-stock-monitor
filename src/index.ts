@@ -1,10 +1,10 @@
+import { stat } from 'fs';
 import { Context, h, Logger, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
 import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
-
 export interface Config {
   enableOnStartUp?: boolean;
   enableSuggestion?: boolean;
@@ -15,7 +15,7 @@ export interface Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-   Schema.object({
+  Schema.object({
     enableOnStartUp: Schema.boolean().default(true).description('启用该插件时立刻启动记录'),
   }),
   Schema.object({
@@ -51,6 +51,8 @@ export const inject = ['echarts'];
 export function apply(ctx: Context)
 {
   const config = ctx.config as Config;
+  ctx.i18n.define('zh-CN', require('./locales/zh-CN.json'))
+  ctx.i18n.define('en-US', require('./locales/en-US.json'))
 
   let tempData: Record<string, {
     nowData?: Stock;
@@ -174,7 +176,7 @@ export function apply(ctx: Context)
       const thisBotObj = tempData[v.session.selfId];
       thisBotObj.isOpen = true;
 
-      v.session.send(' [stockMonitor] 监听已开启');
+      v.session.send(v.session.text('stockMonitor.enable'));
     });
 
   ctx.command('iirose.stock.off', '关闭股票监听功能')
@@ -205,7 +207,7 @@ export function apply(ctx: Context)
       const thisBotObj = tempData[v.session.selfId];
       thisBotObj.isOpen = false;
 
-      v.session.send(' [stockMonitor] 监听已关闭');
+      v.session.send(v.session.text('stockMonitor.disable'));
     });
 
 
@@ -230,7 +232,7 @@ export function apply(ctx: Context)
 
       const thisBotObj = tempData[v.session.selfId];
 
-      if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+      if (thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
 
       echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
       (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
@@ -239,7 +241,7 @@ export function apply(ctx: Context)
 
       const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
 
-      return ' [stockMonitor] 本轮股票票价\n\n' + chart;
+      return v.session.text("stockMonitor.data") + chart;
     });
 
 
@@ -293,7 +295,7 @@ export function apply(ctx: Context)
 
       const message = [
         '\\\\\\*',
-        '# 股价提醒'
+        session.text("stockMonitor.header")
       ];
 
       if (data.unitPrice == 1 && data.totalStock == 1000)
@@ -305,8 +307,8 @@ export function apply(ctx: Context)
         status.has = 0;
         status.new = 1;
 
-        message.push(`股市崩盘了！`);
-        message.push(`崩盘前盘内共有：${thisBotObj.nowData.totalStock}股`);
+        message.push(session.text('stockMonitor.crash'));
+        message.push(session.text('stockMonitor.beforeCrash',[thisBotObj.nowData.totalStock]));
 
         thisBotObj.nowData = data;
 
@@ -330,22 +332,22 @@ export function apply(ctx: Context)
       {
         status.up++;
         status.down = 0;
-        message.push(`已增加${status.up}次`)
-        message.push(`已增加${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}钞; 增幅${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`);
+        message.push(session.text('stockMonitor.upTime',[status.up]))
+        message.push(session.text('stockMonitor.upTime',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       if (data.unitPrice < thisBotObj.nowData.unitPrice)
       {
         status.up = 0;
         status.down++;
-        message.push(`已降低${status.down}次`)
-        message.push(`已降低${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}钞; 降幅${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`);
+        message.push(session.text('stockMonitor.downTime',[status.down]))
+        message.push(session.text('stockMonitor.downCash',[(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4),(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       // console.log(status);
-      message.push(`股价：${data.unitPrice}`);
-      message.push(`总股：${data.totalStock}`);
-      message.push(`总金：${data.totalMoney}`);
+      message.push(session.text("stockMonitor.unitPrice",[data.unitPrice]));
+      message.push(session.text("stockMonitor.totalStock",[data.totalStock]));
+      message.push(session.text("stockMonitor.totalMoney",[data.totalMoney]));
 
   if (config.enableSuggestion) {
     const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
@@ -356,23 +358,23 @@ export function apply(ctx: Context)
     if (buyMoneyRange && buyMoneyRange[2] && 
         data.unitPrice >= buyMoneyRange[0] && 
         data.unitPrice <= buyMoneyRange[1]) {
-        message.push(`建议买入：当前股价 ${data.unitPrice} 钞，在配置区间[${buyMoneyRange[0]}~${buyMoneyRange[1]}]内`);
+        message.push(session.text("stockMonitor.buyMoney", [data.unitPrice,buyMoneyRange[0],buyMoneyRange[1]]));
     }
     
     if (sellMoneyRange && sellMoneyRange[2] && 
         data.unitPrice >= sellMoneyRange[0] && 
         data.unitPrice <= sellMoneyRange[1]) {
-        message.push(`建议卖出：当前股价 ${data.unitPrice} 钞，在配置区间[${sellMoneyRange[0]}~${sellMoneyRange[1]}]内`);
+        message.push(session.text("stockMonitor.sellMoney", [data.unitPrice,sellMoneyRange[0],sellMoneyRange[1]]));
     }
     
     if (buyComboSetting && buyComboSetting[1] && 
         status.down >= buyComboSetting[0]) {
-        message.push(`建议买入：股价已连续下跌 ${status.down} 次`);
+        message.push(session.text("stockMonitor.buyCombo", [status.down]));
     }
     
     if (sellComboSetting && sellComboSetting[1] && 
         status.up >= sellComboSetting[0]) {
-        message.push(`建议卖出：股价已连续上涨 ${status.up} 次`);
+        message.push(session.text("stockMonitor.sellCombo", [status.up]));
     }
   }
   
