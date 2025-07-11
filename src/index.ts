@@ -5,24 +5,17 @@ import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
 
-export interface BaseConfig {
+export interface Config {
   enableOnStartUp?: boolean;
-  enableSuggestion?: boolean
+  enableSuggestion?: boolean;
+  buyMoney?: [number, number, boolean];
+  sellMoney?: [number, number, boolean];
+  buyCombo?: [number, boolean];
+  sellCombo?: [number, boolean];
 }
-
-export interface EnabledConfig extends BaseConfig {
-  enableOnStartUp?: boolean;
-  enableSuggestion?: boolean
-  buyMoney?: [number, number, boolean]
-  sellMoney?: [number, number, boolean]
-  buyCombo?: [number, boolean]
-  sellCombo?: [number, boolean]
-}
-
-export type Config = BaseConfig | EnabledConfig
 
 export const Config: Schema<Config> = Schema.intersect([
-  Schema.object({
+   Schema.object({
     enableOnStartUp: Schema.boolean().default(true).description('启用该插件时立刻启动记录'),
   }),
   Schema.object({
@@ -355,11 +348,10 @@ export function apply(ctx: Context)
       message.push(`总金：${data.totalMoney}`);
 
   if (config.enableSuggestion) {
-    const enabled = config as EnabledConfig;
-    const buyMoneyRange = enabled.buyMoney; // [Number, Number, Boolean]
-    const sellMoneyRange = enabled.sellMoney; // [Number, Number, Boolean]
-    const buyComboSetting = enabled.buyCombo; // [Number, Boolean]
-    const sellComboSetting = enabled.sellCombo; // [Number, Boolean]
+    const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
+    const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
+    const buyComboSetting = config.buyCombo; // [Number, Boolean]
+    const sellComboSetting = config.sellCombo; // [Number, Boolean]
     
     if (buyMoneyRange && buyMoneyRange[2] && 
         data.unitPrice >= buyMoneyRange[0] && 
