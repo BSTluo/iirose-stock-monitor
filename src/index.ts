@@ -333,7 +333,7 @@ export function apply(ctx: Context)
         status.up++;
         status.down = 0;
         message.push(session.text('stockMonitor.upTime',[status.up]))
-        message.push(session.text('stockMonitor.upTime',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
+        message.push(session.text('stockMonitor.upCash',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       if (data.unitPrice < thisBotObj.nowData.unitPrice)
