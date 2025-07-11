@@ -6,10 +6,12 @@ import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 export const name = 'iirose-stock-monitor';
 
 export interface BaseConfig {
+  enableOnStartUp?: boolean;
   enableSuggestion?: boolean
 }
 
 export interface EnabledConfig extends BaseConfig {
+  enableOnStartUp?: boolean;
   enableSuggestion?: boolean
   buyMoney?: [number, number, boolean]
   sellMoney?: [number, number, boolean]
@@ -20,6 +22,9 @@ export interface EnabledConfig extends BaseConfig {
 export type Config = BaseConfig | EnabledConfig
 
 export const Config: Schema<Config> = Schema.intersect([
+  Schema.object({
+    enableOnStartUp: Schema.boolean().default(true).description('启用该插件时立刻启动记录'),
+  }),
   Schema.object({
     enableSuggestion: Schema.boolean().default(false).description('是否开启建议'),
   }),
@@ -268,6 +273,9 @@ export function apply(ctx: Context)
     }
 
     const thisBotObj = tempData[session.selfId];
+
+    if (config.enableOnStartUp){thisBotObj.isOpen=true}
+    else {thisBotObj.isOpen=false}
 
     if (!thisBotObj.isOpen) { return; }
 
