@@ -6,15 +6,15 @@ import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 export const name = 'iirose-stock-monitor';
 
 export interface BaseConfig {
-  enableSuggestion: boolean
+  enableSuggestion?: boolean
 }
 
 export interface EnabledConfig extends BaseConfig {
-  enableSuggestion: true
-  buyMoney?: [Number, Number, Boolean]
-  sellMoney?: [Number, Number, Boolean]
-  buyCombo?: [Number, Boolean]
-  sellCombo?: [Number, Boolean]
+  enableSuggestion?: boolean
+  buyMoney?: [number, number, boolean]
+  sellMoney?: [number, number, boolean]
+  buyCombo?: [number, boolean]
+  sellCombo?: [number, boolean]
 }
 
 export type Config = BaseConfig | EnabledConfig
@@ -39,9 +39,7 @@ export const Config: Schema<Config> = Schema.intersect([
         .description('在连续上涨指定值次的时候提示卖出')
         .default([3, false]),
     }),
-    Schema.object({
-      enableSuggestion: Schema.const(false).required(),
-    }),
+    Schema.object({}),
   ]),
 ])
 
@@ -54,6 +52,8 @@ export const inject = ['echarts'];
 
 export function apply(ctx: Context)
 {
+  const config = ctx.config as Config;
+
   let tempData: Record<string, {
     nowData?: Stock;
     status: { down: number, up: number, baseMoney: number, unitPrice: number, lastBaseMoney: number, has: number, new: number; };
@@ -300,15 +300,14 @@ export function apply(ctx: Context)
         // 股票重置
         status.up = 0;
         status.down = 0;
-        thisBotObj.nowData = data;
         // logger.warn(`启动新股${(status.has > 0) ? "已损失" + status.has : ''}`);
         status.has = 0;
         status.new = 1;
 
-        message[2] = `股市崩盘！`;
-        message[3] = `股价：${data.unitPrice}`;
-        message[4] = `总股：${data.totalStock}`;
-        message[5] = `总金：${data.totalMoney}`;
+        message.push(`股市崩盘了！`);
+        message.push(`崩盘前盘内共有：${thisBotObj.nowData.totalStock}股`);
+
+        thisBotObj.nowData = data;
 
         thisBotObj.history.price = [data.unitPrice];
         const now = new Date();
@@ -330,22 +329,53 @@ export function apply(ctx: Context)
       {
         status.up++;
         status.down = 0;
-        message[2] = `已增加${status.up}次`;
-        message[3] = `已增加${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(3)} 增幅${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`;
+        message.push(`已增加${status.up}次`)
+        message.push(`已增加${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}钞; 增幅${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`);
       }
 
       if (data.unitPrice < thisBotObj.nowData.unitPrice)
       {
         status.up = 0;
         status.down++;
-        message[2] = `已降低${status.down}次`;
-        message[3] = `已降低${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(2)} 降幅${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`;
+        message.push(`已降低${status.down}次`)
+        message.push(`已降低${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}钞; 降幅${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`);
       }
 
       // console.log(status);
-      message[4] = `股价：${data.unitPrice}`;
-      message[5] = `总股：${data.totalStock}`;
-      message[6] = `总金：${data.totalMoney}`;
+      message.push(`股价：${data.unitPrice}`);
+      message.push(`总股：${data.totalStock}`);
+      message.push(`总金：${data.totalMoney}`);
+
+  if (config.enableSuggestion) {
+    const enabled = config as EnabledConfig;
+    const buyMoneyRange = enabled.buyMoney; // [Number, Number, Boolean]
+    const sellMoneyRange = enabled.sellMoney; // [Number, Number, Boolean]
+    const buyComboSetting = enabled.buyCombo; // [Number, Boolean]
+    const sellComboSetting = enabled.sellCombo; // [Number, Boolean]
+    
+    if (buyMoneyRange && buyMoneyRange[2] && 
+        data.unitPrice >= buyMoneyRange[0] && 
+        data.unitPrice <= buyMoneyRange[1]) {
+        message.push(`建议买入：当前股价 ${data.unitPrice} 钞，在配置区间[${buyMoneyRange[0]}~${buyMoneyRange[1]}]内`);
+    }
+    
+    if (sellMoneyRange && sellMoneyRange[2] && 
+        data.unitPrice >= sellMoneyRange[0] && 
+        data.unitPrice <= sellMoneyRange[1]) {
+        message.push(`建议卖出：当前股价 ${data.unitPrice} 钞，在配置区间[${sellMoneyRange[0]}~${sellMoneyRange[1]}]内`);
+    }
+    
+    if (buyComboSetting && buyComboSetting[1] && 
+        status.down >= buyComboSetting[0]) {
+        message.push(`建议买入：股价已连续下跌 ${status.down} 次`);
+    }
+    
+    if (sellComboSetting && sellComboSetting[1] && 
+        status.up >= sellComboSetting[0]) {
+        message.push(`建议卖出：股价已连续上涨 ${status.up} 次`);
+    }
+  }
+  
 
       thisBotObj.nowData = data;
 
