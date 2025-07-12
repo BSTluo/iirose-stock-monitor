@@ -288,8 +288,11 @@ export function apply(ctx: Context)
         // console.log(nowData)
       }
 
-      if (thisBotObj.nowData == data)
-      {
+      if (thisBotObj.nowData == data){
+        return;
+      }
+
+      if (thisBotObj.nowData.totalMoney == data.totalMoney){ //你这不是没更新吗（震怒
         return;
       }
 
