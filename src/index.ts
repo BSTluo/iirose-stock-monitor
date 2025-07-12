@@ -357,7 +357,8 @@ export function apply(ctx: Context)
     
     if (buyMoneyRange && buyMoneyRange[2] && 
         data.unitPrice >= buyMoneyRange[0] && 
-        data.unitPrice <= buyMoneyRange[1]) {
+        data.unitPrice <= buyMoneyRange[1] && 
+        data.unitPrice >= 0.1) { //防止小于0.1还提示买的极端情况
         message.push(session.text("stockMonitor.buyMoney", [data.unitPrice,buyMoneyRange[0],buyMoneyRange[1]]));
     }
     
@@ -368,7 +369,8 @@ export function apply(ctx: Context)
     }
     
     if (buyComboSetting && buyComboSetting[1] && 
-        status.down >= buyComboSetting[0]) {
+        status.down >= buyComboSetting[0] && 
+        data.unitPrice >= 0.1) { 
         message.push(session.text("stockMonitor.buyCombo", [status.down]));
     }
     
