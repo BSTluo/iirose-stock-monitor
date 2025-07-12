@@ -357,7 +357,7 @@ export function apply(ctx: Context)
       ]));
       message.push(session.text("stockMonitor.totalMoney",[data.totalMoney,
         (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
-        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
+        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(((data.totalMoney - thisBotObj.nowData.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalMoney - data.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`
       ]));
 
   if (config.enableSuggestion) {

@@ -13,7 +13,7 @@
   "stockMonitor.downTime": "已降低 {0} 次",
   "stockMonitor.downCash": "已降低 {0} 钞; 降幅 {1}%",
   "stockMonitor.unitPrice": "股价：{0} ({1}钞，{2}%)",
-  "stockMonitor.totalStock": "总股：{0} ({1}钞，{2}%)",
+  "stockMonitor.totalStock": "总股：{0} ({1}股，{2}%)",
   "stockMonitor.totalMoney": "总金：{0} ({1}钞，{2}%)",
   "stockMonitor.buyMoney": "建议买入：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
   "stockMonitor.sellMoney": "建议卖出：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
