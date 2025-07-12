@@ -332,7 +332,8 @@ export function apply(ctx: Context)
       {
         status.up++;
         status.down = 0;
-        message.push(session.text('stockMonitor.upTime',[status.up]))
+        if (status.up == 1) {message.push(session.text('stockMonitor.upFirst'))}
+        else {message.push(session.text('stockMonitor.upTime',[status.up]))}
         message.push(session.text('stockMonitor.upCash',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
@@ -340,7 +341,8 @@ export function apply(ctx: Context)
       {
         status.up = 0;
         status.down++;
-        message.push(session.text('stockMonitor.downTime',[status.down]))
+        if (status.down == 1) {message.push(session.text('stockMonitor.downFirst'))}
+        else {message.push(session.text('stockMonitor.downTime',[status.down]))}
         message.push(session.text('stockMonitor.downCash',[(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4),(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
