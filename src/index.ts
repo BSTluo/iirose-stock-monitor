@@ -347,9 +347,18 @@ export function apply(ctx: Context)
       }
 
       // console.log(status);
-      message.push(session.text("stockMonitor.unitPrice",[data.unitPrice]));
-      message.push(session.text("stockMonitor.totalStock",[data.totalStock]));
-      message.push(session.text("stockMonitor.totalMoney",[data.totalMoney]));
+      message.push(session.text("stockMonitor.unitPrice",[data.unitPrice,
+        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}`:`-${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}`,
+        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`
+      ]));
+      message.push(session.text("stockMonitor.totalStock",[data.totalStock,
+        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}`:`-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
+        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
+      ]));
+      message.push(session.text("stockMonitor.totalMoney",[data.totalMoney,
+        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
+        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
+      ]));
 
   if (config.enableSuggestion) {
     const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
