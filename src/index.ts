@@ -315,8 +315,8 @@ export function apply(ctx: Context)
 
         thisBotObj.nowData = data;
 
-        thisBotObj.history.price = [data.unitPrice];
         const now = new Date();
+        thisBotObj.history.price = [data.unitPrice];
         thisBotObj.history.time = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
 
         return data.send({
@@ -327,9 +327,15 @@ export function apply(ctx: Context)
 
       }
 
-      thisBotObj.history.price.push(data.unitPrice);
       const now = new Date();
-      thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+      const lastTime = thisBotObj.history.time[thisBotObj.history.time.length - 1];
+      if (!lastTime || 
+          (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
+          parseInt(lastTime.split(':')[0]), 
+          parseInt(lastTime.split(':')[1])).getTime()) > 90000) {  //1.5分钟
+          thisBotObj.history.price.push(data.unitPrice);
+          thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+      }
 
       if (data.unitPrice > thisBotObj.nowData.unitPrice)
       {
