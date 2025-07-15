@@ -329,7 +329,7 @@ export function apply(ctx: Context)
 
       const now = new Date();
       const lastTime = thisBotObj.history.time[thisBotObj.history.time.length - 1];
-      if (!lastTime || 
+      if (!lastTime || //in case fucked up
           (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
           parseInt(lastTime.split(':')[0]), 
           parseInt(lastTime.split(':')[1])).getTime()) > 90000) {  //1.5分钟
