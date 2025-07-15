@@ -12,6 +12,7 @@ export interface Config {
   sellMoney?: [number, number, boolean];
   buyCombo?: [number, boolean];
   sellCombo?: [number, boolean];
+  enableTotalMoney?: boolean;
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -39,6 +40,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
     Schema.object({}),
   ]),
+  Schema.object({
+    enableTotalMoney: Schema.boolean().default(true).description('是否开启总金'),
+  }),
 ])
 
 export const usage = ` # 须知
@@ -364,16 +368,19 @@ export function apply(ctx: Context)
         (data.totalStock > thisBotObj.nowData.totalStock)?`+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}`:`-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
         (data.totalStock > thisBotObj.nowData.totalStock)?`+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
       ]));
+
+    if (config.enableTotalMoney){
       message.push(session.text("stockMonitor.totalMoney",[data.totalMoney,
         (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
         (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(((data.totalMoney - thisBotObj.nowData.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalMoney - data.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`
       ]));
+    }
 
-  if (config.enableSuggestion) {
-    const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
-    const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
-    const buyComboSetting = config.buyCombo; // [Number, Boolean]
-    const sellComboSetting = config.sellCombo; // [Number, Boolean]
+    if (config.enableSuggestion) {
+      const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
+      const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
+      const buyComboSetting = config.buyCombo; // [Number, Boolean]
+      const sellComboSetting = config.sellCombo; // [Number, Boolean]
     
     if (buyMoneyRange && buyMoneyRange[2] && 
         data.unitPrice >= buyMoneyRange[0] && 
