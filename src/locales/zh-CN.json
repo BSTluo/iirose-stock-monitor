@@ -3,6 +3,7 @@
   "stockMonitor.disable": "[stockMonitor] 监听已关闭",
   "stockMonitor.noData": "[stockMonitor] 插件未记录股票数据",
   "stockMonitor.data": "[stockMonitor] 本轮股票票价\n\n",
+  "stockMonitor.unableToBuy": "! 不可购买 !",
   "stockMonitor.header": "# 股价提醒",
   "stockMonitor.crash": "股市崩盘了！",
   "stockMonitor.beforeCrash": "崩盘前盘内共有：{0}股",

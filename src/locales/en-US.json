@@ -3,6 +3,7 @@
   "stockMonitor.disable": "[stockMonitor] Monitoring disabled",
   "stockMonitor.noData": "[stockMonitor] No stock data recorded by plugin",
   "stockMonitor.data": "[stockMonitor] Current round stock prices\n\n",
+  "stockMonitor.unableToBuy": "! NO BUYING !",
   "stockMonitor.header": "# Stock Price Alert",
   "stockMonitor.crash": "Stock market crashed!",
   "stockMonitor.beforeCrash": "Total shares before crash: {0}",

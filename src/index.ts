@@ -353,7 +353,7 @@ export function apply(ctx: Context)
       message.push(session.text("stockMonitor.unitPrice",[data.unitPrice,
         (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}`:`-${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}`,
         (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`
-      ]));
+      ])+" "+((data.unitPrice<=0.1)?session.text("stockMonitor.unableToBuy"):''));
       message.push(session.text("stockMonitor.totalStock",[data.totalStock,
         (data.totalStock > thisBotObj.nowData.totalStock)?`+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}`:`-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
         (data.totalStock > thisBotObj.nowData.totalStock)?`+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
