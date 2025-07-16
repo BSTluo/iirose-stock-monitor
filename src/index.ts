@@ -13,6 +13,7 @@ export interface Config {
   buyCombo?: [number, boolean];
   sellCombo?: [number, boolean];
   enableTotalMoney?: boolean;
+  sendChartAfterCrash?: boolean;
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -41,7 +42,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({}),
   ]),
   Schema.object({
-    enableTotalMoney: Schema.boolean().default(true).description('是否开启总金'),
+    enableTotalMoney: Schema.boolean().default(true).description('是否在报表最后显示总金'),
+  }),
+  Schema.object({
+    sendChartAfterCrash: Schema.boolean().default(false).description('是否在股票崩盘后发送股票图'),
   }),
 ])
 
