@@ -321,17 +321,35 @@ export function apply(ctx: Context)
         message.push(session.text('stockMonitor.crash'));
         message.push(session.text('stockMonitor.beforeCrash',[thisBotObj.nowData.totalStock]));
 
+        data.send({
+          public: {
+            message: message.join('\n')
+          }
+        });
+
+        if (config.sendChartAfterCrash){
+
+          echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, 0, 100);
+          (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, 0, 100);
+
+          const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+
+          const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
+
+          data.send({
+            public: {
+              message: chart
+            }
+          });
+        }
+
         thisBotObj.nowData = data;
 
         const now = new Date();
         thisBotObj.history.price = [data.unitPrice];
         thisBotObj.history.time = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
 
-        return data.send({
-          public: {
-            message: message.join('\n')
-          }
-        });
+        return;
 
       }
 
