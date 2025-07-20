@@ -239,8 +239,8 @@ export function apply(ctx: Context)
       if (v.session.platform != "iirose") { return; }
 
       const thisBotObj = tempData[v.session.selfId];
-
-      if (thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
+      
+      if (thisBotObj == undefined|| thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
 
       echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
       (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
