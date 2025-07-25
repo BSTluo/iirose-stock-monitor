@@ -1,26 +1,72 @@
+import { stat } from 'fs';
 import { Context, h, Logger, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
 import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
+export interface Config {
+  enableOnStartUp?: boolean;
+  enableSuggestion?: boolean;
+  buyMoney?: [number, number, boolean];
+  sellMoney?: [number, number, boolean];
+  buyCombo?: [number, boolean];
+  sellCombo?: [number, boolean];
+  enableTotalMoney?: boolean;
+  sendChartAfterCrash?: boolean;
+}
 
-export interface Config { }
-
-export const Config: Schema<Config> = Schema.object({});
+export const Config: Schema<Config> = Schema.intersect([
+  Schema.object({
+    enableOnStartUp: Schema.boolean().default(true).description('启用该插件时立刻启动记录'),
+  }),
+  Schema.object({
+    enableSuggestion: Schema.boolean().default(false).description('是否开启建议'),
+  }),
+  Schema.union([
+    Schema.object({
+      enableSuggestion: Schema.const(true).required(),
+      buyMoney: Schema.tuple([Number, Number, Boolean])
+        .description('在价格在指定值之间的时候提示买进')
+        .default([0.1, 0.2, false]),
+      sellMoney: Schema.tuple([Number, Number, Boolean])
+        .description('在价格在指定值之间的时候提示卖出')
+        .default([1, 999, false,]),
+      buyCombo: Schema.tuple([Number, Boolean])
+        .description('在连续下跌指定值次的时候提示买进')
+        .default([3, false]),
+      sellCombo: Schema.tuple([Number, Boolean])
+        .description('在连续上涨指定值次的时候提示卖出')
+        .default([3, false]),
+    }),
+    Schema.object({}),
+  ]),
+  Schema.object({
+    enableTotalMoney: Schema.boolean().default(true).description('是否在报表最后显示总金'),
+  }),
+  Schema.object({
+    sendChartAfterCrash: Schema.boolean().default(false).description('是否在股票崩盘后发送股票图'),
+  }),
+])
 
 export const usage = ` # 须知
 v0.0.7版本后，支持图表显示功能，但需要安装w-echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
 `;
 
+
 export const inject = ['echarts'];
 
 export function apply(ctx: Context)
 {
+  const config = ctx.config as Config;
+  ctx.i18n.define('zh-CN', require('./locales/zh-CN.json'))
+  ctx.i18n.define('en-US', require('./locales/en-US.json'))
+
   let tempData: Record<string, {
     nowData?: Stock;
     status: { down: number, up: number, baseMoney: number, unitPrice: number, lastBaseMoney: number, has: number, new: number; };
     isOpen: boolean;
+    lastBuyPrice?: number;
     history: {
       price: number[];
       time: string[];
@@ -138,7 +184,7 @@ export function apply(ctx: Context)
       const thisBotObj = tempData[v.session.selfId];
       thisBotObj.isOpen = true;
 
-      v.session.send(' [stockMonitor] 监听已开启');
+      v.session.send(v.session.text('stockMonitor.enable'));
     });
 
   ctx.command('iirose.stock.off', '关闭股票监听功能')
@@ -169,7 +215,7 @@ export function apply(ctx: Context)
       const thisBotObj = tempData[v.session.selfId];
       thisBotObj.isOpen = false;
 
-      v.session.send(' [stockMonitor] 监听已关闭');
+      v.session.send(v.session.text('stockMonitor.disable'));
     });
 
 
@@ -193,8 +239,8 @@ export function apply(ctx: Context)
       if (v.session.platform != "iirose") { return; }
 
       const thisBotObj = tempData[v.session.selfId];
-
-      if (thisBotObj.history.time.length <= 0) { return ' [stockMonitor] 插件未记录股票数据'; }
+      
+      if (thisBotObj == undefined|| thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
 
       echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
       (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
@@ -203,7 +249,7 @@ export function apply(ctx: Context)
 
       const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
 
-      return ' [stockMonitor] 本轮股票票价\n\n' + chart;
+      return v.session.text("stockMonitor.data") + chart;
     });
 
 
@@ -231,6 +277,9 @@ export function apply(ctx: Context)
 
     const thisBotObj = tempData[session.selfId];
 
+    if (config.enableOnStartUp){thisBotObj.isOpen=true}
+    else {thisBotObj.isOpen=false}
+
     if (!thisBotObj.isOpen) { return; }
 
     const status = thisBotObj.status;
@@ -247,14 +296,17 @@ export function apply(ctx: Context)
         // console.log(nowData)
       }
 
-      if (thisBotObj.nowData == data)
-      {
+      if (thisBotObj.nowData == data){
+        return;
+      }
+
+      if (thisBotObj.nowData.totalMoney == data.totalMoney){ //你这不是没更新吗（震怒
         return;
       }
 
       const message = [
         '\\\\\\*',
-        '# 股价提醒'
+        session.text("stockMonitor.header")
       ];
 
       if (data.unitPrice == 1 && data.totalStock == 1000)
@@ -262,52 +314,121 @@ export function apply(ctx: Context)
         // 股票重置
         status.up = 0;
         status.down = 0;
-        thisBotObj.nowData = data;
         // logger.warn(`启动新股${(status.has > 0) ? "已损失" + status.has : ''}`);
         status.has = 0;
         status.new = 1;
 
-        message[2] = `股市崩盘！`;
-        message[3] = `股价：${data.unitPrice}`;
-        message[4] = `总股：${data.totalStock}`;
-        message[5] = `总金：${data.totalMoney}`;
+        message.push(session.text('stockMonitor.crash'));
+        message.push(session.text('stockMonitor.beforeCrash',[thisBotObj.nowData.totalStock]));
 
-        thisBotObj.history.price = [data.unitPrice];
-        const now = new Date();
-        thisBotObj.history.time = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
-
-        return data.send({
+        data.send({
           public: {
             message: message.join('\n')
           }
         });
 
+        if (config.sendChartAfterCrash){
+
+          echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, 0, 100);
+          (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, 0, 100);
+
+          const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+
+          const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
+
+          data.send({
+            public: {
+              message: chart
+            }
+          });
+        }
+
+        thisBotObj.nowData = data;
+
+        const now = new Date();
+        thisBotObj.history.price = [data.unitPrice];
+        thisBotObj.history.time = [`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`];
+
+        return;
+
       }
 
-      thisBotObj.history.price.push(data.unitPrice);
       const now = new Date();
-      thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+      const lastTime = thisBotObj.history.time[thisBotObj.history.time.length - 1];
+      if (!lastTime || //in case fucked up
+          (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
+          parseInt(lastTime.split(':')[0]), 
+          parseInt(lastTime.split(':')[1])).getTime()) > 90000) {  //1.5分钟
+          thisBotObj.history.price.push(data.unitPrice);
+          thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+      }
 
       if (data.unitPrice > thisBotObj.nowData.unitPrice)
       {
         status.up++;
         status.down = 0;
-        message[2] = `已增加${status.up}次`;
-        message[3] = `已增加${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(3)} 增幅${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`;
+        if (status.up == 1) {message.push(session.text('stockMonitor.upFirst'))}
+        else {message.push(session.text('stockMonitor.upTime',[status.up]))}
+        message.push(session.text('stockMonitor.upCash',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       if (data.unitPrice < thisBotObj.nowData.unitPrice)
       {
         status.up = 0;
         status.down++;
-        message[2] = `已降低${status.down}次`;
-        message[3] = `已降低${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(2)} 降幅${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}%`;
+        if (status.down == 1) {message.push(session.text('stockMonitor.downFirst'))}
+        else {message.push(session.text('stockMonitor.downTime',[status.down]))}
+        message.push(session.text('stockMonitor.downCash',[(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4),(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       // console.log(status);
-      message[4] = `股价：${data.unitPrice}`;
-      message[5] = `总股：${data.totalStock}`;
-      message[6] = `总金：${data.totalMoney}`;
+      message.push(session.text("stockMonitor.unitPrice",[data.unitPrice,
+        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}`:`-${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}`,
+        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`
+      ])+" "+((data.unitPrice<=0.1)?session.text("stockMonitor.unableToBuy"):''));
+      message.push(session.text("stockMonitor.totalStock",[data.totalStock,
+        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}`:`-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
+        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
+      ]));
+
+    if (config.enableTotalMoney){
+      message.push(session.text("stockMonitor.totalMoney",[data.totalMoney,
+        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
+        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(((data.totalMoney - thisBotObj.nowData.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalMoney - data.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`
+      ]));
+    }
+
+    if (config.enableSuggestion) {
+      const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
+      const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
+      const buyComboSetting = config.buyCombo; // [Number, Boolean]
+      const sellComboSetting = config.sellCombo; // [Number, Boolean]
+    
+    if (buyMoneyRange && buyMoneyRange[2] && 
+        data.unitPrice >= buyMoneyRange[0] && 
+        data.unitPrice <= buyMoneyRange[1] && 
+        data.unitPrice >= 0.1) { //防止小于0.1还提示买的极端情况
+        message.push(session.text("stockMonitor.buyMoney", [data.unitPrice,buyMoneyRange[0],buyMoneyRange[1]]));
+    }
+    
+    if (sellMoneyRange && sellMoneyRange[2] && 
+        data.unitPrice >= sellMoneyRange[0] && 
+        data.unitPrice <= sellMoneyRange[1]) {
+        message.push(session.text("stockMonitor.sellMoney", [data.unitPrice,sellMoneyRange[0],sellMoneyRange[1]]));
+    }
+    
+    if (buyComboSetting && buyComboSetting[1] && 
+        status.down >= buyComboSetting[0] && 
+        data.unitPrice >= 0.1) { 
+        message.push(session.text("stockMonitor.buyCombo", [status.down]));
+    }
+    
+    if (sellComboSetting && sellComboSetting[1] && 
+        status.up >= sellComboSetting[0]) {
+        message.push(session.text("stockMonitor.sellCombo", [status.up]));
+    }
+  }
+  
 
       thisBotObj.nowData = data;
 
