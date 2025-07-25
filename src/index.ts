@@ -5,7 +5,8 @@ import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
 import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
-export interface Config {
+export interface Config
+{
   enableOnStartUp?: boolean;
   enableSuggestion?: boolean;
   buyMoney?: [number, number, boolean];
@@ -47,10 +48,10 @@ export const Config: Schema<Config> = Schema.intersect([
   Schema.object({
     sendChartAfterCrash: Schema.boolean().default(false).description('是否在股票崩盘后发送股票图'),
   }),
-])
+]);
 
 export const usage = ` # 须知
-v0.0.7版本后，支持图表显示功能，但需要安装w-echarts插件及其依赖，若不习惯使用，请切换为v0.0.6版本
+v0.0.7版本后，支持图表显示功能，若不习惯使用，请切换为v0.0.6版本
 `;
 
 
@@ -59,8 +60,8 @@ export const inject = ['echarts'];
 export function apply(ctx: Context)
 {
   const config = ctx.config as Config;
-  ctx.i18n.define('zh-CN', require('./locales/zh-CN.json'))
-  ctx.i18n.define('en-US', require('./locales/en-US.json'))
+  ctx.i18n.define('zh-CN', require('./locales/zh-CN.json'));
+  ctx.i18n.define('en-US', require('./locales/en-US.json'));
 
   let tempData: Record<string, {
     nowData?: Stock;
@@ -71,6 +72,7 @@ export function apply(ctx: Context)
       price: number[];
       time: string[];
     };
+    time: boolean;
   }> = {};
 
   let echartsOption: EchartsOption = {
@@ -177,7 +179,8 @@ export function apply(ctx: Context)
           history: {
             price: [],
             time: []
-          }
+          },
+          time: false
         };
       }
 
@@ -208,7 +211,8 @@ export function apply(ctx: Context)
           history: {
             price: [],
             time: []
-          }
+          },
+          time: false
         };
       }
 
@@ -239,8 +243,8 @@ export function apply(ctx: Context)
       if (v.session.platform != "iirose") { return; }
 
       const thisBotObj = tempData[v.session.selfId];
-      
-      if (thisBotObj == undefined|| thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
+
+      if (thisBotObj == undefined || thisBotObj.history.time.length <= 0) { return v.session.text("stockMonitor.noData"); }
 
       echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, v.options.min, v.options.max);
       (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, v.options.min, v.options.max);
@@ -251,6 +255,7 @@ export function apply(ctx: Context)
 
       return v.session.text("stockMonitor.data") + chart;
     });
+
 
 
   ctx.on('iirose/before-getUserList', (session) =>
@@ -271,14 +276,26 @@ export function apply(ctx: Context)
         history: {
           price: [],
           time: []
-        }
+        },
+        time: true
       };
     }
 
     const thisBotObj = tempData[session.selfId];
 
-    if (config.enableOnStartUp){thisBotObj.isOpen=true}
-    else {thisBotObj.isOpen=false}
+    if (thisBotObj.time)
+    {
+      if (config.enableOnStartUp)
+      {
+        thisBotObj.isOpen = true;
+      }
+      else
+      {
+        thisBotObj.isOpen = false;
+      }
+
+      thisBotObj.time = false;
+    }
 
     if (!thisBotObj.isOpen) { return; }
 
@@ -296,11 +313,13 @@ export function apply(ctx: Context)
         // console.log(nowData)
       }
 
-      if (thisBotObj.nowData == data){
+      if (thisBotObj.nowData == data)
+      {
         return;
       }
 
-      if (thisBotObj.nowData.totalMoney == data.totalMoney){ //你这不是没更新吗（震怒
+      if (thisBotObj.nowData.totalMoney == data.totalMoney)
+      { //你这不是没更新吗（震怒
         return;
       }
 
@@ -319,7 +338,7 @@ export function apply(ctx: Context)
         status.new = 1;
 
         message.push(session.text('stockMonitor.crash'));
-        message.push(session.text('stockMonitor.beforeCrash',[thisBotObj.nowData.totalStock]));
+        message.push(session.text('stockMonitor.beforeCrash', [thisBotObj.nowData.totalStock]));
 
         data.send({
           public: {
@@ -327,7 +346,8 @@ export function apply(ctx: Context)
           }
         });
 
-        if (config.sendChartAfterCrash){
+        if (config.sendChartAfterCrash)
+        {
 
           echartsOption.series[0].data = getMiddleRange(thisBotObj.history.price, 0, 100);
           (echartsOption.xAxis as EchartsOption).data = getMiddleRange(thisBotObj.history.time, 0, 100);
@@ -356,79 +376,86 @@ export function apply(ctx: Context)
       const now = new Date();
       const lastTime = thisBotObj.history.time[thisBotObj.history.time.length - 1];
       if (!lastTime || //in case fucked up
-          (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
-          parseInt(lastTime.split(':')[0]), 
-          parseInt(lastTime.split(':')[1])).getTime()) > 90000) {  //1.5分钟
-          thisBotObj.history.price.push(data.unitPrice);
-          thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+        (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+          parseInt(lastTime.split(':')[0]),
+          parseInt(lastTime.split(':')[1])).getTime()) > 90000)
+      {  //1.5分钟
+        thisBotObj.history.price.push(data.unitPrice);
+        thisBotObj.history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
       }
 
       if (data.unitPrice > thisBotObj.nowData.unitPrice)
       {
         status.up++;
         status.down = 0;
-        if (status.up == 1) {message.push(session.text('stockMonitor.upFirst'))}
-        else {message.push(session.text('stockMonitor.upTime',[status.up]))}
-        message.push(session.text('stockMonitor.upCash',[(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4),(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
+        if (status.up == 1) { message.push(session.text('stockMonitor.upFirst')); }
+        else { message.push(session.text('stockMonitor.upTime', [status.up])); }
+        message.push(session.text('stockMonitor.upCash', [(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4), (((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       if (data.unitPrice < thisBotObj.nowData.unitPrice)
       {
         status.up = 0;
         status.down++;
-        if (status.down == 1) {message.push(session.text('stockMonitor.downFirst'))}
-        else {message.push(session.text('stockMonitor.downTime',[status.down]))}
-        message.push(session.text('stockMonitor.downCash',[(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4),(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
+        if (status.down == 1) { message.push(session.text('stockMonitor.downFirst')); }
+        else { message.push(session.text('stockMonitor.downTime', [status.down])); }
+        message.push(session.text('stockMonitor.downCash', [(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4), (((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)]));
       }
 
       // console.log(status);
-      message.push(session.text("stockMonitor.unitPrice",[data.unitPrice,
-        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}`:`-${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}`,
-        (data.unitPrice > thisBotObj.nowData.unitPrice)?`+${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`
-      ])+" "+((data.unitPrice<=0.1)?session.text("stockMonitor.unableToBuy"):''));
-      message.push(session.text("stockMonitor.totalStock",[data.totalStock,
-        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}`:`-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
-        (data.totalStock > thisBotObj.nowData.totalStock)?`+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
+      message.push(session.text("stockMonitor.unitPrice", [data.unitPrice,
+      (data.unitPrice > thisBotObj.nowData.unitPrice) ? `+${(data.unitPrice - thisBotObj.nowData.unitPrice).toFixed(4)}` : `-${(thisBotObj.nowData.unitPrice - data.unitPrice).toFixed(4)}`,
+      (data.unitPrice > thisBotObj.nowData.unitPrice) ? `+${(((data.unitPrice - thisBotObj.nowData.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}` : `-${(((thisBotObj.nowData.unitPrice - data.unitPrice) / thisBotObj.nowData.unitPrice) * 100).toFixed(2)}`
+      ]) + " " + ((data.unitPrice <= 0.1) ? session.text("stockMonitor.unableToBuy") : ''));
+      message.push(session.text("stockMonitor.totalStock", [data.totalStock,
+      (data.totalStock > thisBotObj.nowData.totalStock) ? `+${(data.totalStock - thisBotObj.nowData.totalStock).toFixed(0)}` : `-${(thisBotObj.nowData.totalStock - data.totalStock).toFixed(0)}`,
+      (data.totalStock > thisBotObj.nowData.totalStock) ? `+${(((data.totalStock - thisBotObj.nowData.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}` : `-${(((thisBotObj.nowData.totalStock - data.totalStock) / thisBotObj.nowData.totalStock) * 100).toFixed(2)}`
       ]));
 
-    if (config.enableTotalMoney){
-      message.push(session.text("stockMonitor.totalMoney",[data.totalMoney,
-        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}`:`-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
-        (data.totalMoney > thisBotObj.nowData.totalMoney)?`+${(((data.totalMoney - thisBotObj.nowData.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`:`-${(((thisBotObj.nowData.totalMoney - data.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`
-      ]));
-    }
+      if (config.enableTotalMoney)
+      {
+        message.push(session.text("stockMonitor.totalMoney", [data.totalMoney,
+        (data.totalMoney > thisBotObj.nowData.totalMoney) ? `+${(data.totalMoney - thisBotObj.nowData.totalMoney).toFixed(0)}` : `-${(thisBotObj.nowData.totalMoney - data.totalMoney).toFixed(0)}`,
+        (data.totalMoney > thisBotObj.nowData.totalMoney) ? `+${(((data.totalMoney - thisBotObj.nowData.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}` : `-${(((thisBotObj.nowData.totalMoney - data.totalMoney) / thisBotObj.nowData.totalMoney) * 100).toFixed(2)}`
+        ]));
+      }
 
-    if (config.enableSuggestion) {
-      const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
-      const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
-      const buyComboSetting = config.buyCombo; // [Number, Boolean]
-      const sellComboSetting = config.sellCombo; // [Number, Boolean]
-    
-    if (buyMoneyRange && buyMoneyRange[2] && 
-        data.unitPrice >= buyMoneyRange[0] && 
-        data.unitPrice <= buyMoneyRange[1] && 
-        data.unitPrice >= 0.1) { //防止小于0.1还提示买的极端情况
-        message.push(session.text("stockMonitor.buyMoney", [data.unitPrice,buyMoneyRange[0],buyMoneyRange[1]]));
-    }
-    
-    if (sellMoneyRange && sellMoneyRange[2] && 
-        data.unitPrice >= sellMoneyRange[0] && 
-        data.unitPrice <= sellMoneyRange[1]) {
-        message.push(session.text("stockMonitor.sellMoney", [data.unitPrice,sellMoneyRange[0],sellMoneyRange[1]]));
-    }
-    
-    if (buyComboSetting && buyComboSetting[1] && 
-        status.down >= buyComboSetting[0] && 
-        data.unitPrice >= 0.1) { 
-        message.push(session.text("stockMonitor.buyCombo", [status.down]));
-    }
-    
-    if (sellComboSetting && sellComboSetting[1] && 
-        status.up >= sellComboSetting[0]) {
-        message.push(session.text("stockMonitor.sellCombo", [status.up]));
-    }
-  }
-  
+      if (config.enableSuggestion)
+      {
+        const buyMoneyRange = config.buyMoney; // [Number, Number, Boolean]
+        const sellMoneyRange = config.sellMoney; // [Number, Number, Boolean]
+        const buyComboSetting = config.buyCombo; // [Number, Boolean]
+        const sellComboSetting = config.sellCombo; // [Number, Boolean]
+
+        if (buyMoneyRange && buyMoneyRange[2] &&
+          data.unitPrice >= buyMoneyRange[0] &&
+          data.unitPrice <= buyMoneyRange[1] &&
+          data.unitPrice >= 0.1)
+        { //防止小于0.1还提示买的极端情况
+          message.push(session.text("stockMonitor.buyMoney", [data.unitPrice, buyMoneyRange[0], buyMoneyRange[1]]));
+        }
+
+        if (sellMoneyRange && sellMoneyRange[2] &&
+          data.unitPrice >= sellMoneyRange[0] &&
+          data.unitPrice <= sellMoneyRange[1])
+        {
+          message.push(session.text("stockMonitor.sellMoney", [data.unitPrice, sellMoneyRange[0], sellMoneyRange[1]]));
+        }
+
+        if (buyComboSetting && buyComboSetting[1] &&
+          status.down >= buyComboSetting[0] &&
+          data.unitPrice >= 0.1)
+        {
+          message.push(session.text("stockMonitor.buyCombo", [status.down]));
+        }
+
+        if (sellComboSetting && sellComboSetting[1] &&
+          status.up >= sellComboSetting[0])
+        {
+          message.push(session.text("stockMonitor.sellCombo", [status.up]));
+        }
+      }
+
 
       thisBotObj.nowData = data;
 
