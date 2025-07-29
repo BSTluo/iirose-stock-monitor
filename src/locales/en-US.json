@@ -19,5 +19,6 @@
   "stockMonitor.buyMoney": "Buy suggestion: current price {0} cash is within configured range [{1}~{2}]",
   "stockMonitor.sellMoney": "Sell suggestion: current price {0} cash is within configured range [{1}~{2}]",
   "stockMonitor.buyCombo": "Buy suggestion: price has decreased {0} times consecutively",
-  "stockMonitor.sellCombo": "Sell suggestion: price has increased {0} times consecutively"
+  "stockMonitor.sellCombo": "Sell suggestion: price has increased {0} times consecutively",
+  "stockMonitor.clean": "[stockMonitor] Stock data cleared"
 }

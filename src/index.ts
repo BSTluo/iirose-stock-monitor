@@ -231,6 +231,18 @@ export function apply(ctx: Context)
     return array.slice(start, end);
   };
 
+  ctx.command('iirose.stock.clean', '清除历史股票数据')
+    .alias('清空股票数据')
+    .example('iirose.stock.clean')
+    .action(async v =>
+    {
+      if (v.session.platform != "iirose") { return; }
+
+      delete tempData[v.session.selfId];
+
+      v.session.send(v.session.text('stockMonitor.clean'));
+    });
+
   ctx.command('iirose.stock.chart', '查看本轮股票的图表')
     .alias('股票图表')
     .option('max', '-m [max:number] 最大显示百上限', { fallback: 100 })
@@ -239,7 +251,6 @@ export function apply(ctx: Context)
     .example('iirose.stock.chart -m 100 -n 0')
     .action(async v =>
     {
-
       if (v.session.platform != "iirose") { return; }
 
       const thisBotObj = tempData[v.session.selfId];
