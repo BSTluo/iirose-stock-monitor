@@ -19,5 +19,6 @@
   "stockMonitor.buyMoney": "建议买入：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
   "stockMonitor.sellMoney": "建议卖出：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
   "stockMonitor.buyCombo": "建议买入：股价已连续下跌 {0} 次",
-  "stockMonitor.sellCombo": "建议卖出：股价已连续上涨 {0} 次"
+  "stockMonitor.sellCombo": "建议卖出：股价已连续上涨 {0} 次",
+  "stockMonitor.clean": "[stockMonitor] 股票数据已清除"
 }
