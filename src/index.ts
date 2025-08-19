@@ -8,12 +8,14 @@ export const name = 'iirose-stock-monitor';
 export interface Config
 {
   enableOnStartUp?: boolean;
+  enableText?:boolean;
   enableSuggestion?: boolean;
   buyMoney?: [number, number, boolean];
   sellMoney?: [number, number, boolean];
   buyCombo?: [number, boolean];
   sellCombo?: [number, boolean];
   enableTotalMoney?: boolean;
+  sendTextAfterCrash?: boolean;
   sendChartAfterCrash?: boolean;
 }
 
@@ -22,11 +24,18 @@ export const Config: Schema<Config> = Schema.intersect([
     enableOnStartUp: Schema.boolean().default(true).description('启用该插件时立刻启动记录'),
   }),
   Schema.object({
-    enableSuggestion: Schema.boolean().default(false).description('是否开启建议'),
+    enableText: Schema.boolean().default(true).description('是否开启股价提醒文字播报'),
   }),
   Schema.union([
     Schema.object({
+      enableText: Schema.const(true),
+      enableSuggestion: Schema.boolean().default(false).description('是否开启买进/卖出建议'),
+    }),
+  ]),
+  Schema.union([
+    Schema.object({
       enableSuggestion: Schema.const(true).required(),
+      enableText: Schema.const(true),
       buyMoney: Schema.tuple([Number, Number, Boolean])
         .description('在价格在指定值之间的时候提示买进')
         .default([0.1, 0.2, false]),
@@ -40,10 +49,17 @@ export const Config: Schema<Config> = Schema.intersect([
         .description('在连续上涨指定值次的时候提示卖出')
         .default([3, false]),
     }),
-    Schema.object({}),
+    Schema.object({
+    }),
+  ]),
+  Schema.union([
+    Schema.object({
+      enableText: Schema.const(true),
+      enableTotalMoney: Schema.boolean().default(true).description('是否在报表最后显示总金'),
+    }),
   ]),
   Schema.object({
-    enableTotalMoney: Schema.boolean().default(true).description('是否在报表最后显示总金'),
+    sendTextAfterCrash: Schema.boolean().default(true).description('是否在股票崩盘后发送文字播报'),
   }),
   Schema.object({
     sendChartAfterCrash: Schema.boolean().default(false).description('是否在股票崩盘后发送股票图'),
@@ -351,11 +367,14 @@ export function apply(ctx: Context)
         message.push(session.text('stockMonitor.crash'));
         message.push(session.text('stockMonitor.beforeCrash', [thisBotObj.nowData.totalStock]));
 
-        data.send({
-          public: {
-            message: message.join('\n')
-          }
-        });
+
+        if (config.sendTextAfterCrash) {
+          data.send({
+            public: {
+              message: message.join("\n"),
+            },
+          });
+        }
 
         if (config.sendChartAfterCrash)
         {
@@ -471,6 +490,7 @@ export function apply(ctx: Context)
 
       thisBotObj.nowData = data;
 
+      if (!config.enableText) {return;}
       return data.send({
         public: {
           message: message.join('\n')
