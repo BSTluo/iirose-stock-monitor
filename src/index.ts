@@ -465,22 +465,19 @@ export function apply(ctx: Context)
         { //防止小于0.1还提示买的极端情况
           message.push(session.text("stockMonitor.buyMoney", [data.unitPrice, buyMoneyRange[0], buyMoneyRange[1]]));
         }
-
-        if (sellMoneyRange && sellMoneyRange[2] &&
+        else if (sellMoneyRange && sellMoneyRange[2] &&
           data.unitPrice >= sellMoneyRange[0] &&
           data.unitPrice <= sellMoneyRange[1])
         {
           message.push(session.text("stockMonitor.sellMoney", [data.unitPrice, sellMoneyRange[0], sellMoneyRange[1]]));
         }
-
-        if (buyComboSetting && buyComboSetting[1] &&
+        else if (buyComboSetting && buyComboSetting[1] &&
           status.down >= buyComboSetting[0] &&
           data.unitPrice >= 0.1)
         {
           message.push(session.text("stockMonitor.buyCombo", [status.down]));
         }
-
-        if (sellComboSetting && sellComboSetting[1] &&
+        else if (sellComboSetting && sellComboSetting[1] &&
           status.up >= sellComboSetting[0])
         {
           message.push(session.text("stockMonitor.sellCombo", [status.up]));
