@@ -1,14 +1,20 @@
-import { stat } from 'fs';
-import { Context, h, Logger, Schema } from 'koishi';
+import { Context, Schema } from 'koishi';
 import { StockSession } from 'koishi-plugin-adapter-iirose';
+
 import { Stock } from 'koishi-plugin-adapter-iirose/lib/decoder/Stock';
 import { EchartsOption } from "koishi-plugin-puppeteer-echarts";
 
 export const name = 'iirose-stock-monitor';
+export const inject = ['echarts'];
+
+export const usage = ` # 须知
+v0.0.7版本后，支持图表显示功能，若不习惯使用，请切换为v0.0.6版本
+`;
+
 export interface Config
 {
   enableOnStartUp?: boolean;
-  enableText?:boolean;
+  enableText?: boolean;
   enableSuggestion?: boolean;
   buyMoney?: [number, number, boolean];
   sellMoney?: [number, number, boolean];
@@ -34,6 +40,9 @@ export const Config: Schema<Config> = Schema.intersect([
   ]),
   Schema.union([
     Schema.object({
+      enableSuggestion: Schema.const(false),
+    }),
+    Schema.object({
       enableSuggestion: Schema.const(true).required(),
       enableText: Schema.const(true),
       buyMoney: Schema.tuple([Number, Number, Boolean])
@@ -49,8 +58,6 @@ export const Config: Schema<Config> = Schema.intersect([
         .description('在连续上涨指定值次的时候提示卖出')
         .default([3, false]),
     }),
-    Schema.object({
-    }),
   ]),
   Schema.union([
     Schema.object({
@@ -65,13 +72,6 @@ export const Config: Schema<Config> = Schema.intersect([
     sendChartAfterCrash: Schema.boolean().default(false).description('是否在股票崩盘后发送股票图'),
   }),
 ]);
-
-export const usage = ` # 须知
-v0.0.7版本后，支持图表显示功能，若不习惯使用，请切换为v0.0.6版本
-`;
-
-
-export const inject = ['echarts'];
 
 export function apply(ctx: Context)
 {
@@ -238,7 +238,6 @@ export function apply(ctx: Context)
       v.session.send(v.session.text('stockMonitor.disable'));
     });
 
-
   const getMiddleRange = (array: number[] | string[], minPercent: number, maxPercent: number) =>
   {
     const length = array.length;
@@ -278,12 +277,10 @@ export function apply(ctx: Context)
 
       const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
 
-      const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
+      const chart = await ctx.echarts.createChart(width, 700, echartsOption);
 
       return v.session.text("stockMonitor.data") + chart;
     });
-
-
 
   ctx.on('iirose/before-getUserList', (session) =>
   {
@@ -367,8 +364,8 @@ export function apply(ctx: Context)
         message.push(session.text('stockMonitor.crash'));
         message.push(session.text('stockMonitor.beforeCrash', [thisBotObj.nowData.totalStock]));
 
-
-        if (config.sendTextAfterCrash) {
+        if (config.sendTextAfterCrash)
+        {
           data.send({
             public: {
               message: message.join("\n"),
@@ -384,7 +381,7 @@ export function apply(ctx: Context)
 
           const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
 
-          const chart = await ctx.echarts.createChart(width, 700, echartsOption as any);
+          const chart = await ctx.echarts.createChart(width, 700, echartsOption);
 
           data.send({
             public: {
@@ -484,10 +481,9 @@ export function apply(ctx: Context)
         }
       }
 
-
       thisBotObj.nowData = data;
 
-      if (!config.enableText) {return;}
+      if (!config.enableText) { return; }
       return data.send({
         public: {
           message: message.join('\n')

@@ -1,27 +1,26 @@
 {
   "name": "koishi-plugin-iirose-stock-monitor",
   "description": "适用于[IIROSE蔷薇花园](https://iirose.com/)的股价监控",
-  "version": "0.0.33",
+  "version": "0.1.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
-    "dist"
+    "src"
   ],
   "license": "MIT",
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "iirose-stock-monitor"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BSTluo/iirose-stock-monitor"
+    "url": "git+https://github.com/BSTluo/iirose-stock-monitor.git"
   },
   "peerDependencies": {
-    "koishi": "^4.18.7",
-    "koishi-plugin-adapter-iirose": "^0.8.0",
-    "koishi-plugin-puppeteer-echarts": "^0.0.4"
+    "koishi": "^4.18.7"
   },
   "devDependencies": {
     "koishi-plugin-adapter-iirose": "^0.8.0",
