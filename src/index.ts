@@ -52,59 +52,53 @@ export const Config: Schema<Config> = Schema.intersect([
     botTable: Schema.array(Schema.object({
       botId: Schema.string().description('机器人 ID'),
       channelId: Schema.string().description('频道 ID'),
-    })).role('table').default([{ botId: "", channelId: "" }]).description("推送列表<br>填入`机器人ID`和对应的`频道ID`"),
+    })).role('table').default([{ botId: "", channelId: "" }]).description("推送列表<br>填入`机器人ID`和对应的`频道ID`<br>推荐使用`inspect`指令查看信息后 填入此配置项"),
   }).description("推送列表"),
 
   Schema.object({
-    enableSuggestion: Schema.boolean().default(false).description('推送`买进/卖出`建议'),
+    enableSuggestion: Schema.boolean().default(true).description('推送`买进/卖出`建议。<br>即下方的`推荐策略`配置项。'),
     sendTextAfterCrash: Schema.boolean().default(true).description('在股票崩盘后 推送文字播报'),
-    sendChartAfterCrash: Schema.boolean().default(false).description('在股票崩盘后 推送股票图'),
+    sendChartAfterCrash: Schema.boolean().default(true).description('在股票崩盘后 推送股票图'),
     enableTotalMoney: Schema.boolean().default(true).description('推送报表时，显示总金'),
   }).description("文字播报设定"),
 
   Schema.object({
-    buyStrategies: Schema.tuple([Schema.number().default(0.1), Schema.number().default(0.2)]).description('价格区间买入策略 (下限/上限)'),
-    sellStrategies: Schema.tuple([Schema.number().default(1), Schema.number().default(999)]).description('价格区间卖出策略 (下限/上限)'),
-    buyComboStrategies: Schema.number().default(3).description('连续下跌买入策略 (次数)'),
-    sellComboStrategies: Schema.number().default(3).description('连续上涨买入策略 (次数)'),
-  }).description("策略设定"),
+    buyStrategies: Schema.tuple([Schema.number().default(0.1), Schema.number().default(0.2)]).description('价格区间买入推荐策略 (下限/上限)'),
+    sellStrategies: Schema.tuple([Schema.number().default(1), Schema.number().default(999)]).description('价格区间卖出推荐策略 (下限/上限)'),
+    buyComboStrategies: Schema.number().default(3).description('连续下跌买入推荐策略 (次数)'),
+    sellComboStrategies: Schema.number().default(3).description('连续上涨买入推荐策略 (次数)'),
+  }).description("推荐策略"),
 ]);
 
 export function apply(ctx: Context, config: Config)
 {
   const logger = ctx.logger('iirose-stock-monitor');
 
-  // 插件内部状态
+  // 插件内部状态，用于跟踪股票数据
   let stockState = {
     nowData: null as StockData,
     status: { down: 0, up: 0 },
-    isOpen: true, // 始终开启监听
+    isOpen: true, // 监听器默认开启
     history: {
       price: [] as number[],
       time: [] as string[],
     },
   };
 
-  // Echarts 图表基础配置
-  const echartsOption: EchartsOption = {
-    backgroundColor: 'rgba(254,248,239,1)',
-    color: ["#d87c7c", "#919e8b", "#d7ab82", "#6e7074", "#61a0a8", "#efa18d", "#787464", "#cc7e63", "#724e58", "#4b565b"],
-    xAxis: {
-      type: 'category', data: [], axisLine: { show: true, lineStyle: { color: '#333333' } },
-      axisTick: { show: true, lineStyle: { color: '#333333' } }, axisLabel: { show: true, color: '#333' }, splitLine: { show: false }
-    },
-    yAxis: {
-      type: 'value', axisLine: { show: true, lineStyle: { color: '#333' } },
-      axisTick: { show: true, lineStyle: { color: '#333' } }, axisLabel: { show: true, color: '#333' }, splitLine: { show: true, lineStyle: { color: '#ccc' } }
-    },
-    series: [{
-      data: [], type: 'line', lineStyle: { width: 2 }, symbol: 'emptyCircle',
-      symbolSize: 8, itemStyle: { borderWidth: 2 }, smooth: false,
-      label: { show: true, position: 'top' }, markLine: { data: [{ type: 'average', name: 'Avg' }] }
-    }]
-  };
+  /**
+   * 格式化数字变化，自动添加正负号和单位。
+   * @param value - 数值
+   * @param precision - 小数精度
+   * @param unit - 单位 (可选)
+   * @returns 格式化后的字符串
+   */
+  function formatChange(value: number, precision: number, unit: string = ''): string
+  {
+    const sign = value > 0 ? '+' : '';
+    return `${sign}${value.toFixed(precision)}${unit}`;
+  }
 
-  // 消息发送函数，遍历 botTable
+  // 消息发送函数，会遍历配置表中的所有机器人和频道
   const sendMessage = async (content: string | h) =>
   {
     if (!config.botTable || config.botTable.length === 0) return;
@@ -129,22 +123,25 @@ export function apply(ctx: Context, config: Config)
     }
   };
 
-  // 指令定义
-  ctx.command('iirose.stock.on', '开启股票监听功能').alias('股票播报开启')
+  // #region 指令
+  ctx.command('iirose.stock.on', '开启股票监听功能')
+    .alias('股票播报开启')
     .action(() =>
     {
       stockState.isOpen = true;
       return '[stockMonitor] 监听已开启';
     });
 
-  ctx.command('iirose.stock.off', '关闭股票监听功能').alias('股票播报关闭')
+  ctx.command('iirose.stock.off', '关闭股票监听功能')
+    .alias('股票播报关闭')
     .action(() =>
     {
       stockState.isOpen = false;
       return '[stockMonitor] 监听已关闭';
     });
 
-  ctx.command('iirose.stock.clean', '清除历史股票数据').alias('清空股票数据')
+  ctx.command('iirose.stock.clean', '清除历史股票数据')
+    .alias('清空股票数据')
     .action(() =>
     {
       stockState.history.price = [];
@@ -152,18 +149,51 @@ export function apply(ctx: Context, config: Config)
       stockState.nowData = null;
       return '[stockMonitor] 股票数据已清除';
     });
+  // #endregion
 
-  const getMiddleRange = (array: any[], minPercent: number, maxPercent: number) =>
-  {
-    const length = array.length;
-    const start = Math.floor((minPercent / 100) * length);
-    const end = Math.floor((maxPercent / 100) * length);
-    return array.slice(start, end);
-  };
-
-  // 使用 ctx.inject 使 echarts 相关的指令成为可选
+  // 使用 ctx.inject 
+  // 不然 dev模式会有前端卡死的问题
   ctx.inject(['echarts'], (ctx) =>
   {
+    const echartsOption: EchartsOption = {
+      backgroundColor: 'rgba(254,248,239,1)',
+      color: ["#d87c7c", "#919e8b", "#d7ab82", "#6e7074", "#61a0a8", "#efa18d", "#787464", "#cc7e63", "#724e58", "#4b565b"],
+      xAxis: {
+        type: 'category',
+        data: [],
+        axisLine: { show: true, lineStyle: { color: '#333333' } },
+        axisTick: { show: true, lineStyle: { color: '#333333' } },
+        axisLabel: { show: true, color: '#333' },
+        splitLine: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { show: true, lineStyle: { color: '#333' } },
+        axisTick: { show: true, lineStyle: { color: '#333' } },
+        axisLabel: { show: true, color: '#333' },
+        splitLine: { show: true, lineStyle: { color: '#ccc' } }
+      },
+      series: [{
+        data: [],
+        type: 'line',
+        lineStyle: { width: 2 },
+        symbol: 'emptyCircle',
+        symbolSize: 8,
+        itemStyle: { borderWidth: 2 },
+        smooth: false,
+        label: { show: true, position: 'top' },
+        markLine: { data: [{ type: 'average', name: 'Avg' }] }
+      }]
+    };
+
+    const getMiddleRange = (array: any[], minPercent: number, maxPercent: number) =>
+    {
+      const length = array.length;
+      const start = Math.floor((minPercent / 100) * length);
+      const end = Math.floor((maxPercent / 100) * length);
+      return array.slice(start, end);
+    };
+
     ctx.command('iirose.stock.chart', '查看本轮股票的图表')
       .alias('股票图表')
       .option('max', '-m [max:number] 最大显示百上限', { fallback: 100 })
@@ -185,10 +215,11 @@ export function apply(ctx: Context, config: Config)
       });
   });
 
-  // 核心事件监听器
   ctx.on('iirose/stock-update', async (data) =>
   {
     if (!stockState.isOpen) return;
+
+    ctx.logger.info("开始处理股市数据...");
 
     const { nowData, status, history } = stockState;
     if (!nowData)
@@ -209,12 +240,27 @@ export function apply(ctx: Context, config: Config)
 
       if (config.sendTextAfterCrash) await sendMessage(message.join('\n'));
 
-      // 条件化地发送图表
+      // 发送图表
       if (config.sendChartAfterCrash && ctx.echarts)
       {
-        echartsOption.series[0].data = getMiddleRange(history.price, 0, 100);
-        (echartsOption.xAxis as any).data = getMiddleRange(history.time, 0, 100);
-        const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
+        const echartsOption: EchartsOption = {
+          backgroundColor: 'rgba(254,248,239,1)',
+          color: ["#d87c7c", "#919e8b", "#d7ab82", "#6e7074", "#61a0a8", "#efa18d", "#787464", "#cc7e63", "#724e58", "#4b565b"],
+          xAxis: {
+            type: 'category', data: history.price, axisLine: { show: true, lineStyle: { color: '#333333' } },
+            axisTick: { show: true, lineStyle: { color: '#333333' } }, axisLabel: { show: true, color: '#333' }, splitLine: { show: false }
+          },
+          yAxis: {
+            type: 'value', axisLine: { show: true, lineStyle: { color: '#333' } },
+            axisTick: { show: true, lineStyle: { color: '#333' } }, axisLabel: { show: true, color: '#333' }, splitLine: { show: true, lineStyle: { color: '#ccc' } }
+          },
+          series: [{
+            data: history.price, type: 'line', lineStyle: { width: 2 }, symbol: 'emptyCircle',
+            symbolSize: 8, itemStyle: { borderWidth: 2 }, smooth: false,
+            label: { show: true, position: 'top' }, markLine: { data: [{ type: 'average', name: 'Avg' }] }
+          }]
+        };
+        const width = (history.price.length * 100 + 100) < 1000 ? 1000 : (history.price.length * 100 + 100);
         const chart = await ctx.echarts.createChart(width, 700, echartsOption);
         await sendMessage(chart);
       }
@@ -226,7 +272,7 @@ export function apply(ctx: Context, config: Config)
       return;
     }
 
-    // 记录历史数据
+    // 记录历史数据 (每 1.5 分钟一次)
     const now = new Date();
     const lastTime = history.time[history.time.length - 1];
     if ((!lastTime || (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(lastTime.split(':')[0]), parseInt(lastTime.split(':')[1])).getTime()) > 90000) && data.unitPrice !== nowData.unitPrice)
@@ -235,36 +281,49 @@ export function apply(ctx: Context, config: Config)
       history.time.push(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
     }
 
-    // 计算价格变化
+    // #region 播报
     const priceChange = data.unitPrice - nowData.unitPrice;
     const priceChangePercent = (priceChange / nowData.unitPrice) * 100;
 
+    // 涨跌趋势播报
     if (priceChange > 0)
     {
       status.up++;
       status.down = 0;
-      message.push(status.up === 1 ? '开始增加' : `已增加 ${status.up} 次`, `已增加 ${priceChange.toFixed(4)} 钞; 增幅 ${priceChangePercent.toFixed(2)}%`);
+      const riseText = status.up === 1 ? '开始增加' : `已增加 ${status.up} 次`;
+      const riseDetailText = `已增加 ${priceChange.toFixed(4)} 钞; 增幅 ${priceChangePercent.toFixed(2)}%`;
+      message.push(riseText, riseDetailText);
     } else if (priceChange < 0)
     {
       status.down++;
       status.up = 0;
-      message.push(status.down === 1 ? '开始降低' : `已降低 ${status.down} 次`, `已降低 ${(-priceChange).toFixed(4)} 钞; 降幅 ${(-priceChangePercent).toFixed(2)}%`);
+      const fallText = status.down === 1 ? '开始降低' : `已降低 ${status.down} 次`;
+      const fallDetailText = `已降低 ${(-priceChange).toFixed(4)} 钞; 降幅 ${(-priceChangePercent).toFixed(2)}%`;
+      message.push(fallText, fallDetailText);
     }
 
-    // 基础信息播报
-    message.push(`股价：${data.unitPrice} (${priceChange > 0 ? `+${priceChange.toFixed(4)}` : priceChange.toFixed(4)}钞，${priceChangePercent > 0 ? `+${priceChangePercent.toFixed(2)}` : priceChangePercent.toFixed(2)}%)` + (data.unitPrice <= 0.1 ? ' ! 不可购买 !' : ''));
+    // 核心数据播报
+    const priceChangeFormatted = formatChange(priceChange, 4, '钞');
+    const pricePercentFormatted = formatChange(priceChangePercent, 2, '%');
+    const buyabilityInfo = data.unitPrice <= 0.1 ? ' ! 不可购买 !' : '';
+    message.push(`股价：${data.unitPrice} (${priceChangeFormatted}，${pricePercentFormatted})${buyabilityInfo}`);
+
     const volumeChange = data.totalStock - nowData.totalStock;
     const volumeChangePercent = (volumeChange / nowData.totalStock) * 100;
-    message.push(`总股：${data.totalStock} (${volumeChange > 0 ? `+${volumeChange.toFixed(0)}` : volumeChange.toFixed(0)}股，${volumeChangePercent > 0 ? `+${volumeChangePercent.toFixed(2)}` : volumeChangePercent.toFixed(2)}%)`);
+    const volumeChangeFormatted = formatChange(volumeChange, 0, '股');
+    const volumePercentFormatted = formatChange(volumeChangePercent, 2, '%');
+    message.push(`总股：${data.totalStock} (${volumeChangeFormatted}，${volumePercentFormatted})`);
 
     if (config.enableTotalMoney)
     {
       const moneyChange = data.totalMoney - nowData.totalMoney;
       const moneyChangePercent = (moneyChange / nowData.totalMoney) * 100;
-      message.push(`总金：${data.totalMoney} (${moneyChange > 0 ? `+${moneyChange.toFixed(0)}` : moneyChange.toFixed(0)}钞，${moneyChangePercent > 0 ? `+${moneyChangePercent.toFixed(2)}` : moneyChangePercent.toFixed(2)}%)`);
+      const moneyChangeFormatted = formatChange(moneyChange, 0, '钞');
+      const moneyPercentFormatted = formatChange(moneyChangePercent, 2, '%');
+      message.push(`总金：${data.totalMoney} (${moneyChangeFormatted}，${moneyPercentFormatted})`);
     }
 
-    // 策略建议
+    // 策略建议播报
     if (config.enableSuggestion)
     {
       const { buyStrategies, sellStrategies, buyComboStrategies, sellComboStrategies } = config;
@@ -285,19 +344,14 @@ export function apply(ctx: Context, config: Config)
         message.push(`建议卖出：股价已连续上涨 ${status.up} 次`);
       }
     }
+    // #endregion
 
     stockState.nowData = data;
 
-    // 检查是否需要发送消息
+    // 检查是否配置了推送目标
     if (config.botTable && config.botTable.some(bot => bot.botId && bot.channelId))
     {
       await sendMessage(message.join('\n'));
     }
-  });
-
-  // 插件卸载时清理
-  ctx.on('dispose', () =>
-  {
-    // Clean up if needed
   });
 }
