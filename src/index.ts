@@ -61,13 +61,19 @@ export const Config: Schema<Config> = Schema.intersect([
     sendChartAfterCrash: Schema.boolean().default(true).description('在股票崩盘后 推送股票图'),
     enableTotalMoney: Schema.boolean().default(true).description('推送报表时，显示总金'),
   }).description("文字播报设定"),
+  Schema.union([
+    Schema.object({
+      enableSuggestion: Schema.const(true),
+      buyStrategies: Schema.tuple([Schema.number().default(0.1), Schema.number().default(0.2)]).description('价格区间买入推荐策略 (下限/上限)'),
+      sellStrategies: Schema.tuple([Schema.number().default(1), Schema.number().default(999)]).description('价格区间卖出推荐策略 (下限/上限)'),
+      buyComboStrategies: Schema.number().default(3).description('连续下跌买入推荐策略 (次数)'),
+      sellComboStrategies: Schema.number().default(3).description('连续上涨买入推荐策略 (次数)'),
+    }).description("推荐策略"),
+    Schema.object({
+      enableSuggestion: Schema.const(false).required(),
+    }),
+  ])
 
-  Schema.object({
-    buyStrategies: Schema.tuple([Schema.number().default(0.1), Schema.number().default(0.2)]).description('价格区间买入推荐策略 (下限/上限)'),
-    sellStrategies: Schema.tuple([Schema.number().default(1), Schema.number().default(999)]).description('价格区间卖出推荐策略 (下限/上限)'),
-    buyComboStrategies: Schema.number().default(3).description('连续下跌买入推荐策略 (次数)'),
-    sellComboStrategies: Schema.number().default(3).description('连续上涨买入推荐策略 (次数)'),
-  }).description("推荐策略"),
 ]);
 
 export function apply(ctx: Context, config: Config)
@@ -218,8 +224,6 @@ export function apply(ctx: Context, config: Config)
   ctx.on('iirose/stock-update', async (data) =>
   {
     if (!stockState.isOpen) return;
-
-    ctx.logger.info("开始处理股市数据...");
 
     const { nowData, status, history } = stockState;
     if (!nowData)
