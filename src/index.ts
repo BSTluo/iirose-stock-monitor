@@ -73,12 +73,90 @@ export const Config: Schema<Config> = Schema.intersect([
       enableSuggestion: Schema.const(false).required(),
     }),
   ])
-
 ]);
 
 export function apply(ctx: Context, config: Config)
 {
   const logger = ctx.logger('iirose-stock-monitor');
+  ctx.i18n.define("zh-CN", {
+    commands: {
+      "iirose": {
+        arguments: {
+        },
+        description: "iirose 股价监视",
+        messages: {
+          "stockon": "[stockMonitor] 监听已开启",
+          "stockoff": "[stockMonitor] 监听已关闭",
+          "down": "在 {0} 秒内发送想要处理的图片",
+          "cleaned": "[stockMonitor] 股票数据已清除",
+          "noHistory": "[stockMonitor] 插件未记录股票数据",
+          "chartHeader": "[stockMonitor] 本轮股票票价\n\n",
+          "botOffline": "机器人 {0} 离线或未找到。",
+          "sendFailed": "发送消息到频道 {0} 失败:",
+          "reportTitle": "\\\\\\*# 股价提醒",
+          "crashed": "股市崩盘了！",
+          "crashInfo": "崩盘前盘内共有：{0}股",
+          "rising": "开始增加",
+          "riseCount": "已增加 {0} 次",
+          "riseDetails": "已增加 {0} 钞; 增幅 {1}%",
+          "falling": "开始降低",
+          "fallCount": "已降低 {0} 次",
+          "fallDetails": "已降低 {0} 钞; 降幅 {1}%",
+          "unbuyable": " ! 不可购买 !",
+          "priceReport": "股价：{0} ({1}，{2}){3}",
+          "volumeReport": "总股：{0} ({1}，{2})",
+          "moneyReport": "总金：{0} ({1}，{2})",
+          "buySuggestionRange": "建议买入：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
+          "sellSuggestionRange": "建议卖出：当前股价 {0} 钞，在配置区间[{1}~{2}]内",
+          "buySuggestionCombo": "建议买入：股价已连续下跌 {0} 次",
+          "sellSuggestionCombo": "建议卖出：股价已连续上涨 {0} 次",
+        },
+        options: {
+        }
+      },
+    }
+  });
+  ctx.i18n.define("en-US", {
+    commands: {
+      "iirose": {
+        arguments: {
+        },
+        description: "IIRose Stock Price Monitor",
+        messages: {
+          "stockon": "[stockMonitor] Monitoring enabled.",
+          "stockoff": "[stockMonitor] Monitoring disabled.",
+          "down": "Please send the image to be processed within {0} seconds.",
+          "cleaned": "[stockMonitor] Stock data has been cleared.",
+          "noHistory": "[stockMonitor] No stock data recorded by the plugin.",
+          "chartHeader": "[stockMonitor] Stock Price Chart for this round\n\n",
+          "botOffline": "Bot {0} is offline or not found.",
+          "sendFailed": "Failed to send message to channel {0}:",
+          "reportTitle": "\\\\\\*# Stock Price Alert",
+          "crashed": "The stock market has crashed!",
+          "crashInfo": "Total shares before crash: {0}",
+          "rising": "Price started to rise.",
+          "riseCount": "Price has risen {0} times.",
+          "riseDetails": "Increased by {0} credits; Rise of {1}%",
+          "falling": "Price started to fall.",
+          "fallCount": "Price has fallen {0} times.",
+          "fallDetails": "Decreased by {0} credits; Fall of {1}%",
+          "unbuyable": " ! Not buyable !",
+          "priceReport": "Price: {0} ({1}, {2}){3}",
+          "volumeReport": "Total Volume: {0} ({1}, {2})",
+          "moneyReport": "Total Money: {0} ({1}, {2})",
+          "buySuggestionRange": "Suggestion: Buy. Current price {0} is within the configured range [{1}~{2}].",
+          "sellSuggestionRange": "Suggestion: Sell. Current price {0} is within the configured range [{1}~{2}].",
+          "buySuggestionCombo": "Suggestion: Buy. Price has fallen consecutively for {0} times.",
+          "sellSuggestionCombo": "Suggestion: Sell. Price has risen consecutively for {0} times.",
+        },
+        options: {
+        }
+      },
+    }
+  });
+
+  // i18n 快捷调用
+  const t = (path: string, params: object = {}) => [].concat(ctx.i18n.render(ctx.i18n.fallback([]), [`commands.iirose.messages.${path}`], params)).join('');
 
   // 插件内部状态，用于跟踪股票数据
   let stockState = {
@@ -116,7 +194,7 @@ export function apply(ctx: Context, config: Config)
       const bot = ctx.bots.find(b => b.selfId === botInfo.botId || b.user?.id === botInfo.botId);
       if (!bot || bot.status !== Universal.Status.ONLINE)
       {
-        logger.error(`机器人 ${botInfo.botId} 离线或未找到。`);
+        logger.error(t('botOffline', { 0: botInfo.botId }));
         continue;
       }
       try
@@ -124,7 +202,7 @@ export function apply(ctx: Context, config: Config)
         await bot.sendMessage(botInfo.channelId, content);
       } catch (error)
       {
-        logger.error(`发送消息到频道 ${botInfo.channelId} 失败:`, error);
+        logger.error(t('sendFailed', { 0: botInfo.channelId }), error);
       }
     }
   };
@@ -135,7 +213,7 @@ export function apply(ctx: Context, config: Config)
     .action(() =>
     {
       stockState.isOpen = true;
-      return '[stockMonitor] 监听已开启';
+      return t('stockon');
     });
 
   ctx.command('iirose.stock.off', '关闭股票监听功能')
@@ -143,7 +221,7 @@ export function apply(ctx: Context, config: Config)
     .action(() =>
     {
       stockState.isOpen = false;
-      return '[stockMonitor] 监听已关闭';
+      return t('stockoff');
     });
 
   ctx.command('iirose.stock.clean', '清除历史股票数据')
@@ -153,7 +231,7 @@ export function apply(ctx: Context, config: Config)
       stockState.history.price = [];
       stockState.history.time = [];
       stockState.nowData = null;
-      return '[stockMonitor] 股票数据已清除';
+      return t('cleaned');
     });
   // #endregion
 
@@ -208,7 +286,7 @@ export function apply(ctx: Context, config: Config)
       {
         if (stockState.history.price.length <= 0)
         {
-          return '[stockMonitor] 插件未记录股票数据';
+          return t('noHistory');
         }
 
         echartsOption.series[0].data = getMiddleRange(stockState.history.price, options.min, options.max);
@@ -217,7 +295,7 @@ export function apply(ctx: Context, config: Config)
         const width = (echartsOption.series[0].data.length * 100 + 100) < 1000 ? 1000 : (echartsOption.series[0].data.length * 100 + 100);
         const chart = await ctx.echarts.createChart(width, 700, echartsOption);
 
-        return '[stockMonitor] 本轮股票票价\n\n' + chart;
+        return t('chartHeader') + chart;
       });
   });
 
@@ -233,14 +311,14 @@ export function apply(ctx: Context, config: Config)
     }
     if (nowData.totalMoney === data.totalMoney) return;
 
-    const message: string[] = ['\\\\\\*', '# 股价提醒'];
+    const message: string[] = [t('reportTitle')];
 
     // 崩盘处理
     if (data.unitPrice === 1 && data.totalStock === 1000)
     {
       status.up = 0;
       status.down = 0;
-      message.push('股市崩盘了！', `崩盘前盘内共有：${nowData.totalStock}股`);
+      message.push(t('crashed'), t('crashInfo', { 0: nowData.totalStock }));
 
       if (config.sendTextAfterCrash) await sendMessage(message.join('\n'));
 
@@ -294,29 +372,29 @@ export function apply(ctx: Context, config: Config)
     {
       status.up++;
       status.down = 0;
-      const riseText = status.up === 1 ? '开始增加' : `已增加 ${status.up} 次`;
-      const riseDetailText = `已增加 ${priceChange.toFixed(4)} 钞; 增幅 ${priceChangePercent.toFixed(2)}%`;
+      const riseText = status.up === 1 ? t('rising') : t('riseCount', { 0: status.up });
+      const riseDetailText = t('riseDetails', { 0: priceChange.toFixed(4), 1: priceChangePercent.toFixed(2) });
       message.push(riseText, riseDetailText);
     } else if (priceChange < 0)
     {
       status.down++;
       status.up = 0;
-      const fallText = status.down === 1 ? '开始降低' : `已降低 ${status.down} 次`;
-      const fallDetailText = `已降低 ${(-priceChange).toFixed(4)} 钞; 降幅 ${(-priceChangePercent).toFixed(2)}%`;
+      const fallText = status.down === 1 ? t('falling') : t('fallCount', { 0: status.down });
+      const fallDetailText = t('fallDetails', { 0: (-priceChange).toFixed(4), 1: (-priceChangePercent).toFixed(2) });
       message.push(fallText, fallDetailText);
     }
 
     // 核心数据播报
     const priceChangeFormatted = formatChange(priceChange, 4, '钞');
     const pricePercentFormatted = formatChange(priceChangePercent, 2, '%');
-    const buyabilityInfo = data.unitPrice <= 0.1 ? ' ! 不可购买 !' : '';
-    message.push(`股价：${data.unitPrice} (${priceChangeFormatted}，${pricePercentFormatted})${buyabilityInfo}`);
+    const buyabilityInfo = data.unitPrice <= 0.1 ? t('unbuyable') : '';
+    message.push(t('priceReport', { 0: data.unitPrice, 1: priceChangeFormatted, 2: pricePercentFormatted, 3: buyabilityInfo }));
 
     const volumeChange = data.totalStock - nowData.totalStock;
     const volumeChangePercent = (volumeChange / nowData.totalStock) * 100;
     const volumeChangeFormatted = formatChange(volumeChange, 0, '股');
     const volumePercentFormatted = formatChange(volumeChangePercent, 2, '%');
-    message.push(`总股：${data.totalStock} (${volumeChangeFormatted}，${volumePercentFormatted})`);
+    message.push(t('volumeReport', { 0: data.totalStock, 1: volumeChangeFormatted, 2: volumePercentFormatted }));
 
     if (config.enableTotalMoney)
     {
@@ -324,7 +402,7 @@ export function apply(ctx: Context, config: Config)
       const moneyChangePercent = (moneyChange / nowData.totalMoney) * 100;
       const moneyChangeFormatted = formatChange(moneyChange, 0, '钞');
       const moneyPercentFormatted = formatChange(moneyChangePercent, 2, '%');
-      message.push(`总金：${data.totalMoney} (${moneyChangeFormatted}，${moneyPercentFormatted})`);
+      message.push(t('moneyReport', { 0: data.totalMoney, 1: moneyChangeFormatted, 2: moneyPercentFormatted }));
     }
 
     // 策略建议播报
@@ -333,19 +411,19 @@ export function apply(ctx: Context, config: Config)
       const { buyStrategies, sellStrategies, buyComboStrategies, sellComboStrategies } = config;
       if (buyStrategies && data.unitPrice >= buyStrategies[0] && data.unitPrice <= buyStrategies[1] && data.unitPrice >= 0.1)
       {
-        message.push(`建议买入：当前股价 ${data.unitPrice} 钞，在配置区间[${buyStrategies[0]}~${buyStrategies[1]}]内`);
+        message.push(t('buySuggestionRange', { 0: data.unitPrice, 1: buyStrategies[0], 2: buyStrategies[1] }));
       }
       if (sellStrategies && data.unitPrice >= sellStrategies[0] && data.unitPrice <= sellStrategies[1])
       {
-        message.push(`建议卖出：当前股价 ${data.unitPrice} 钞，在配置区间[${sellStrategies[0]}~${sellStrategies[1]}]内`);
+        message.push(t('sellSuggestionRange', { 0: data.unitPrice, 1: sellStrategies[0], 2: sellStrategies[1] }));
       }
       if (buyComboStrategies && status.down >= buyComboStrategies && data.unitPrice >= 0.1)
       {
-        message.push(`建议买入：股价已连续下跌 ${status.down} 次`);
+        message.push(t('buySuggestionCombo', { 0: status.down }));
       }
       if (sellComboStrategies && status.up >= sellComboStrategies)
       {
-        message.push(`建议卖出：股价已连续上涨 ${status.up} 次`);
+        message.push(t('sellSuggestionCombo', { 0: status.up }));
       }
     }
     // #endregion
