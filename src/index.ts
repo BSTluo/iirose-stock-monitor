@@ -7,7 +7,9 @@ export const usage = `
 ---
 
 # 须知
-v0.0.7版本后，支持图表显示功能，若不习惯使用，请切换为v0.0.6版本
+v0.1.x版本重写了部分功能的实现以适配iirose-adapter v0.9.x，若不习惯需将该插件退回到v0.0.x 并将iirose-adapter退回到v0.8.x
+
+你可能也需要重新写一下本地化文件... 现在挪到 "commands.iirose.stock.messages" 里了
 
 ---
 
@@ -80,11 +82,11 @@ export function apply(ctx: Context, config: Config)
   const logger = ctx.logger('iirose-stock-monitor');
   ctx.i18n.define("zh-CN", {
     commands: {
-      "iirose": {
+      "iirose.stock": {
         arguments: {
         },
         description: "iirose 股价监视",
-        messages: {
+        "messages": {
           "stockon": "[stockMonitor] 监听已开启",
           "stockoff": "[stockMonitor] 监听已关闭",
           "down": "在 {0} 秒内发送想要处理的图片",
@@ -114,15 +116,15 @@ export function apply(ctx: Context, config: Config)
         options: {
         }
       },
-    }
+    },
   });
   ctx.i18n.define("en-US", {
     commands: {
-      "iirose": {
+      "iirose.stock": {
         arguments: {
         },
         description: "IIRose Stock Price Monitor",
-        messages: {
+        "messages": {
           "stockon": "[stockMonitor] Monitoring enabled.",
           "stockoff": "[stockMonitor] Monitoring disabled.",
           "down": "Please send the image to be processed within {0} seconds.",
@@ -156,7 +158,7 @@ export function apply(ctx: Context, config: Config)
   });
 
   // i18n 快捷调用
-  const t = (path: string, params: object = {}) => [].concat(ctx.i18n.render(ctx.i18n.fallback([]), [`commands.iirose.messages.${path}`], params)).join('');
+  const t = (path: string, params: object = {}) => [].concat(ctx.i18n.render(ctx.i18n.fallback([]), [`commands.iirose.stock.messages.${path}`], params)).join('');
 
   // 插件内部状态，用于跟踪股票数据
   let stockState = {
