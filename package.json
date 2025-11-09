@@ -19,18 +19,18 @@
     "type": "git",
     "url": "git+https://github.com/BSTluo/iirose-stock-monitor.git"
   },
-  "peerDependencies": {
-    "koishi": "^4.18.7"
-  },
-  "devDependencies": {
-    "koishi-plugin-adapter-iirose": "^0.10.0",
-    "koishi-plugin-puppeteer-echarts": "^0.0.4"
-  },
   "koishi": {
     "service": {
       "required": [
         "echarts"
       ]
     }
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.7"
+  },
+  "devDependencies": {
+    "koishi-plugin-adapter-iirose": "^0.10.0",
+    "koishi-plugin-puppeteer-echarts": "^0.0.4"
   }
 }
